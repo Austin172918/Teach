@@ -1,0 +1,120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px 'Songti TC'; -webkit-text-stroke: #000000}
+    span.s1 {font-kerning: none}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1">&lt;!DOCTYPE html&gt;</span></p>
+<p class="p1"><span class="s1">&lt;html lang="zh-Hant"&gt;</span></p>
+<p class="p1"><span class="s1">&lt;head&gt;</span></p>
+<p class="p1"><span class="s1">&lt;meta charset="utf-8" /&gt;</span></p>
+<p class="p1"><span class="s1">&lt;meta name="viewport" content="width=device-width, initial-scale=1" /&gt;</span></p>
+<p class="p1"><span class="s1">&lt;title&gt;家教上課紀錄&lt;/title&gt;</span></p>
+<p class="p1"><span class="s1">&lt;style&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>body{margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;background:#0f1222;color:#e8ebff;padding:20px}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>.wrap{max-width:960px;margin:auto}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>h1{margin:0 0 10px}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>.card{background:#171a2b;padding:16px;border-radius:12px;margin-bottom:16px}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>label{display:block;margin:6px 0 2px;font-size:14px;color:#a6acd3}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #333;background:#0f1325;color:#fff}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>table{width:100%;border-collapse:collapse;margin-top:10px}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>th,td{padding:8px;border-bottom:1px solid #333;text-align:left}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>th{background:#141838;color:#cfd6ff}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;margin-right:6px}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>.ok{background:#39d98a;color:#062016}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>.danger{background:#ff6b6b;color:#300}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>.secondary{background:#2c3152;color:#e8ebff}</span></p>
+<p class="p1"><span class="s1">&lt;/style&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/head&gt;</span></p>
+<p class="p1"><span class="s1">&lt;body&gt;</span></p>
+<p class="p1"><span class="s1">&lt;div class="wrap"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;h1&gt;家教上課紀錄&lt;/h1&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;div class="card"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;label&gt;日期&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;input type="date" id="date"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;label&gt;開始時間&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;input type="time" id="time" step="300"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;label&gt;時長&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;select id="dur"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;option value="60"&gt;1 小時&lt;/option&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;option value="90"&gt;1.5 小時&lt;/option&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;option value="120"&gt;2 小時&lt;/option&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/select&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;label&gt;備註&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;textarea id="note"&gt;&lt;/textarea&gt;&lt;br&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;button class="ok" id="addBtn"&gt;新增紀錄&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;button class="secondary" id="exportBtn"&gt;匯出 CSV&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;button class="danger" id="clearBtn"&gt;清空全部&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;div class="card"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;h3&gt;紀錄&lt;/h3&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;table&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;thead&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;tr&gt;&lt;th&gt;#&lt;/th&gt;&lt;th&gt;日期&lt;/th&gt;&lt;th&gt;開始&lt;/th&gt;&lt;th&gt;結束&lt;/th&gt;&lt;th&gt;時長&lt;/th&gt;&lt;th&gt;備註&lt;/th&gt;&lt;th&gt;操作&lt;/th&gt;&lt;/tr&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/thead&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;tbody id="tbody"&gt;&lt;/tbody&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/table&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1">&lt;script&gt;</span></p>
+<p class="p1"><span class="s1">const tz="Asia/Taipei";</span></p>
+<p class="p1"><span class="s1">const $=id=&gt;document.getElementById(id);</span></p>
+<p class="p1"><span class="s1">let sessions=JSON.parse(localStorage.getItem("tutor_sessions_v3")||"[]");</span></p>
+<p class="p1"><span class="s1">function fmtDate(d){return new Intl.DateTimeFormat("zh-Hant",{timeZone:tz,dateStyle:"medium"}).format(d);}</span></p>
+<p class="p1"><span class="s1">function fmtTime(d){return new Intl.DateTimeFormat("zh-Hant",{timeZone:tz,hour:"2-digit",minute:"2-digit",hour12:false}).format(d);}</span></p>
+<p class="p1"><span class="s1">function save(){localStorage.setItem("tutor_sessions_v3",JSON.stringify(sessions));}</span></p>
+<p class="p1"><span class="s1">function render(){</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const tbody=$("tbody");tbody.innerHTML="";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>sessions.slice().sort((a,b)=&gt;new Date(b.start)-new Date(a.start)).forEach((s,i)=&gt;{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const tr=document.createElement("tr");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>tr.innerHTML=`&lt;td&gt;${sessions.length-i}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;td&gt;${fmtDate(new Date(s.start))}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;td&gt;${fmtTime(new Date(s.start))}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;td&gt;${fmtTime(new Date(s.end))}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;td&gt;${s.dur} 分鐘&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;td&gt;&lt;input data-id="${s.id}" value="${s.note||""}" class="note"/&gt;&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;td&gt;&lt;button data-id="${s.id}" class="del"&gt;刪除&lt;/button&gt;&lt;/td&gt;`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>tbody.appendChild(tr);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>document.querySelectorAll(".note").forEach(el=&gt;{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>el.onchange=e=&gt;{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const rec=sessions.find(r=&gt;r.id==el.dataset.id);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if(rec){rec.note=el.value;save();}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>document.querySelectorAll(".del").forEach(el=&gt;{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>el.onclick=()=&gt;{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>sessions=sessions.filter(r=&gt;r.id!=el.dataset.id);save();render();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>});</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">$("addBtn").onclick=()=&gt;{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const date=$("date").value,time=$("time").value,dur=parseInt($("dur").value);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if(!date||!time)return alert("請填日期與時間");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const start=new Date(`${date}T${time}:00+08:00`);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const end=new Date(start.getTime()+dur*60000);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>sessions.push({id:Date.now(),start:start.toISOString(),end:end.toISOString(),dur:dur,note:$("note").value});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>save();render();$("note").value="";</span></p>
+<p class="p1"><span class="s1">};</span></p>
+<p class="p1"><span class="s1">$("exportBtn").onclick=()=&gt;{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const rows=[["日期","開始","結束","時長(分鐘)","備註"]];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>sessions.forEach(s=&gt;rows.push([fmtDate(new Date(s.start)),fmtTime(new Date(s.start)),fmtTime(new Date(s.end)),s.dur,s.note||""]));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const csv=rows.map(r=&gt;r.map(v=&gt;`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const a=document.createElement("a");a.href=url;a.download="tutor_records.csv";a.click();URL.revokeObjectURL(url);</span></p>
+<p class="p1"><span class="s1">};</span></p>
+<p class="p1"><span class="s1">$("clearBtn").onclick=()=&gt;{if(confirm("清空全部？")){sessions=[];save();render();}};</span></p>
+<p class="p1"><span class="s1">render();</span></p>
+<p class="p1"><span class="s1">&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/body&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/html&gt;</span></p>
+</body>
+</html>
