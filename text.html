@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>家教上課紀錄</title>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;background:#0f1222;color:#e8ebff;padding:20px}
+  .wrap{max-width:960px;margin:auto}
+  h1{margin:0 0 10px}
+  .card{background:#171a2b;padding:16px;border-radius:12px;margin-bottom:16px}
+  label{display:block;margin:6px 0 2px;font-size:14px;color:#a6acd3}
+  input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #333;background:#0f1325;color:#fff}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px;border-bottom:1px solid #333;text-align:left}
+  th{background:#141838;color:#cfd6ff}
+  button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;margin-right:6px}
+  .ok{background:#39d98a;color:#062016}
+  .danger{background:#ff6b6b;color:#300}
+  .secondary{background:#2c3152;color:#e8ebff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>家教上課紀錄</h1>
+  <div class="card">
+    <label>日期</label>
+    <input type="date" id="date">
+    <label>開始時間</label>
+    <input type="time" id="time" step="300">
+    <label>時長</label>
+    <select id="dur">
+      <option value="60">1 小時</option>
+      <option value="90">1.5 小時</option>
+      <option value="120">2 小時</option>
+    </select>
+    <label>備註</label>
+    <textarea id="note"></textarea><br>
+    <button class="ok" id="addBtn">新增紀錄</button>
+    <button class="secondary" id="exportBtn">匯出 CSV</button>
+    <button class="danger" id="clearBtn">清空全部</button>
+  </div>
+  <div class="card">
+    <h3>紀錄</h3>
+    <table>
+      <thead>
+        <tr><th>#</th><th>日期</th><th>開始</th><th>結束</th><th>時長</th><th>備註</th><th>操作</th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+<script>
+const tz="Asia/Taipei";
+const $=id=>document.getElementById(id);
+let sessions=JSON.parse(localStorage.getItem("tutor_sessions_v3")||"[]");
+
+function fmtDate(d){return new Intl.DateTimeFormat("zh-Hant",{timeZone:tz,dateStyle:"medium"}).format(d);}
+function fmtTime(d){return new Intl.DateTimeFormat("zh-Hant",{timeZone:tz,hour:"2-digit",minute:"2-digit",hour12:false}).format(d);}
+function save(){localStorage.setItem("tutor_sessions_v3",JSON.stringify(sessions));}
+function render(){
+  const tbody=$("tbody");tbody.innerHTML="";
+  sessions.slice().sort((a,b)=>new Date(b.start)-new Date(a.start)).forEach((s,i)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${sessions.length-i}</td>
+      <td>${fmtDate(new Date(s.start))}</td>
+      <td>${fmtTime(new Date(s.start))}</td>
+      <td>${fmtTime(new Date(s.end))}</td>
+      <td>${s.dur} 分鐘</td>
+      <td><input data-id="${s.id}" value="${s.note||""}" class="note"/></td>
+      <td><button data-id="${s.id}" class="del">刪除</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll(".note").forEach(el=>{
+    el.onchange=e=>{
+      const rec=sessions.find(r=>r.id==el.dataset.id);
+      if(rec){rec.note=el.value;save();}
+    };
+  });
+  document.querySelectorAll(".del").forEach(el=>{
+    el.onclick=()=>{
+      sessions=sessions.filter(r=>r.id!=el.dataset.id);save();render();
+    };
+  });
+}
+
+// 預設填入現在日期和時間（四捨五入到最近 5 分鐘）
+function initDefaults(){
+  const now=new Date(new Date().toLocaleString("en-US",{timeZone:tz}));
+  $("date").value=now.toISOString().slice(0,10);
+  const mins=now.getMinutes();
+  const rounded=Math.round(mins/5)*5;
+  now.setMinutes(rounded,0,0);
+  $("time").value=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+}
+
+$("addBtn").onclick=()=>{
+  const date=$("date").value,time=$("time").value,dur=parseInt($("dur").value);
+  if(!date||!time)return alert("請填日期與時間");
+  const start=new Date(`${date}T${time}:00+08:00`);
+  const end=new Date(start.getTime()+dur*60000);
+  sessions.push({id:Date.now(),start:start.toISOString(),end:end.toISOString(),dur:dur,note:$("note").value});
+  save();render();$("note").value="";initDefaults();
+};
+$("exportBtn").onclick=()=>{
+  const rows=[["日期","開始","結束","時長(分鐘)","備註"]];
+  sessions.forEach(s=>rows.push([fmtDate(new Date(s.start)),fmtTime(new Date(s.start)),fmtTime(new Date(s.end)),s.dur,s.note||""]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="tutor_records.csv";a.click();URL.revokeObjectURL(url);
+};
+$("clearBtn").onclick=()=>{if(confirm("清空全部？")){sessions=[];save();render();}};
+initDefaults();render();
+</script>
+</body>
+</html>
