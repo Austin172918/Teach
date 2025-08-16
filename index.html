@@ -5,16 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>家教上課紀錄</title>
 <style>
-  body{margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;background:#0f1222;color:#e8ebff;padding:20px}
+  /* 背景主題：依時段切換 */
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;
+    color:#e8ebff;
+    padding:20px;
+    transition: background 0.8s ease, color 0.3s ease;
+  }
+  /* 夜晚（預設） */
+  body.night{ background:#0f1222; }
+  /* 清晨 */
+  body.morning{ background:linear-gradient(180deg,#89cff0,#f7fbff); color:#102033; }
+  /* 白天 */
+  body.day{ background:linear-gradient(180deg,#87ceeb,#f0f8ff); color:#0e1a2b; }
+  /* 傍晚 */
+  body.evening{ background:linear-gradient(180deg,#ff9966,#663399); }
+
   .wrap{max-width:960px;margin:auto}
   h1{margin:0 0 10px}
-  .card{background:#171a2b;padding:16px;border-radius:12px;margin-bottom:16px}
+
+  .card{
+    background:rgba(17,20,38,.84);
+    backdrop-filter:saturate(1.2) blur(4px);
+    padding:16px;border-radius:12px;margin-bottom:16px;
+    border:1px solid rgba(255,255,255,.08);
+  }
+  /* 白天/清晨時卡片偏亮 */
+  body.day .card, body.morning .card{
+    background:rgba(255,255,255,.75);
+    color:#0e1a2b;
+    border-color:rgba(0,0,0,.06);
+  }
+  body.day th, body.morning th{ color:#23334a; background:#e9f3ff; }
+  body.day input, body.day select, body.day textarea,
+  body.morning input, body.morning select, body.morning textarea{
+    background:#ffffff; color:#0e1a2b; border:1px solid #c7d7ea;
+  }
+
   label{display:block;margin:6px 0 2px;font-size:14px;color:#a6acd3}
-  input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #333;background:#0f1325;color:#fff}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{padding:8px;border-bottom:1px solid #333;text-align:left}
-  th{background:#141838;color:#cfd6ff}
-  button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;margin-right:6px}
+  body.day label, body.morning label{ color:#4a5d78; }
+
+  input,select,textarea{
+    width:100%;padding:8px;border-radius:8px;border:1px solid #333;background:#0f1325;color:#fff
+  }
+  textarea{min-height:44px;resize:vertical}
+
+  table{width:100%;border-collapse:collapse;margin-top:10px;background:transparent}
+  th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
+  th{background:#141838;color:#cfd6ff;position:sticky;top:0}
+
+  button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer;margin-right:6px;font-weight:600}
   .ok{background:#39d98a;color:#062016}
   .danger{background:#ff6b6b;color:#300}
   .secondary{background:#2c3152;color:#e8ebff}
@@ -24,7 +65,7 @@
 <body>
 <div class="wrap">
   <h1>家教上課紀錄</h1>
-  
+
   <!-- 每小時薪水設定 -->
   <div class="card">
     <label>請輸入每小時薪水（元）</label>
@@ -46,13 +87,13 @@
       <option value="120">2 小時</option>
     </select>
     <label>備註</label>
-    <textarea id="note"></textarea><br>
+    <textarea id="note" placeholder="例如：第 7 章 7-3 題型 B，測驗 80 分"></textarea><br>
     <button class="ok" id="addBtn">新增紀錄</button>
     <button class="secondary" id="exportBtn">匯出 CSV</button>
     <button class="danger" id="clearBtn">清空全部</button>
     <div class="summary">
       累積總金額：<span id="totalMoney">0</span> 元<br>
-      學生應付金額：<span id="studentDue">0</span> 元 
+      學生應付金額：<span id="studentDue">0</span> 元
       <button class="ok" id="payBtn">付款</button>
     </div>
   </div>
@@ -62,96 +103,183 @@
     <h3>紀錄</h3>
     <table>
       <thead>
-        <tr><th>#</th><th>日期</th><th>開始</th><th>結束</th><th>時長</th><th>金額</th><th>備註</th><th>操作</th></tr>
+        <tr>
+          <th>#</th><th>日期</th><th>開始</th><th>結束</th>
+          <th>時長</th><th>金額</th><th>備註</th><th>操作</th>
+        </tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
 </div>
+
 <script>
+/* 台北時區固定 */
 const tz="Asia/Taipei";
 const $=id=>document.getElementById(id);
+
+/* 資料儲存鍵升級到 v4（含金額） */
 let sessions=JSON.parse(localStorage.getItem("tutor_sessions_v4")||"[]");
 let salary=JSON.parse(localStorage.getItem("tutor_salary")||"0");
 let studentDue=JSON.parse(localStorage.getItem("tutor_due")||"0");
 
+/* 時間格式工具 */
 function fmtDate(d){return new Intl.DateTimeFormat("zh-Hant",{timeZone:tz,dateStyle:"medium"}).format(d);}
 function fmtTime(d){return new Intl.DateTimeFormat("zh-Hant",{timeZone:tz,hour:"2-digit",minute:"2-digit",hour12:false}).format(d);}
-function save(){localStorage.setItem("tutor_sessions_v4",JSON.stringify(sessions));}
-function updateDisplay(){
-  $("salaryDisplay").textContent=salary>0? salary+" 元/小時":"尚未設定";
-  $("totalMoney").textContent=sessions.reduce((a,s)=>a+s.money,0);
-  $("studentDue").textContent=studentDue;
+
+/* 背景隨時間切換 */
+function updateBackground(){
+  const now=new Date(new Date().toLocaleString("en-US",{timeZone:tz}));
+  const h=now.getHours();
+  document.body.classList.remove("morning","day","evening","night");
+  if(h>=5 && h<9) document.body.classList.add("morning");
+  else if(h>=9 && h<17) document.body.classList.add("day");
+  else if(h>=17 && h<19) document.body.classList.add("evening");
+  else document.body.classList.add("night");
 }
+updateBackground();
+setInterval(updateBackground, 60*1000);
+
+/* 介面渲染與存取 */
+function save(){ localStorage.setItem("tutor_sessions_v4", JSON.stringify(sessions)); }
+function currency(n){ return (Math.round(n)).toString(); }
+
+function updateDisplay(){
+  $("salaryDisplay").textContent = salary>0 ? currency(salary)+" 元/小時" : "尚未設定";
+  const total = sessions.reduce((a,s)=>a+(s.money||0),0);
+  $("totalMoney").textContent = currency(total);
+  $("studentDue").textContent = currency(studentDue);
+}
+
 function render(){
-  const tbody=$("tbody");tbody.innerHTML="";
-  sessions.slice().sort((a,b)=>new Date(b.start)-new Date(a.start)).forEach((s,i)=>{
+  const tbody=$("tbody");
+  tbody.innerHTML="";
+  const sorted = sessions.slice().sort((a,b)=> new Date(b.start) - new Date(a.start));
+  sorted.forEach((s,idx)=>{
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${sessions.length-i}</td>
+    tr.innerHTML = `
+      <td>${sorted.length - idx}</td>
       <td>${fmtDate(new Date(s.start))}</td>
       <td>${fmtTime(new Date(s.start))}</td>
       <td>${fmtTime(new Date(s.end))}</td>
       <td>${s.dur} 分鐘</td>
-      <td>${s.money} 元</td>
-      <td><input data-id="${s.id}" value="${s.note||""}" class="note"/></td>
-      <td><button data-id="${s.id}" class="del">刪除</button></td>`;
+      <td>${currency(s.money)} 元</td>
+      <td><input data-id="${s.id}" value="${s.note||""}" class="note" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit"/></td>
+      <td><button data-id="${s.id}" class="del secondary">刪除</button></td>
+    `;
     tbody.appendChild(tr);
   });
-  document.querySelectorAll(".note").forEach(el=>{
-    el.onchange=e=>{
-      const rec=sessions.find(r=>r.id==el.dataset.id);
-      if(rec){rec.note=el.value;save();}
-    };
+
+  /* 備註即時存 */
+  tbody.querySelectorAll(".note").forEach(el=>{
+    el.addEventListener("change", ()=>{
+      const rec = sessions.find(r=> r.id == el.dataset.id);
+      if(rec){ rec.note = el.value; save(); }
+    });
   });
-  document.querySelectorAll(".del").forEach(el=>{
-    el.onclick=()=>{
-      sessions=sessions.filter(r=>r.id!=el.dataset.id);save();render();updateDisplay();
-    };
+
+  /* 刪除單筆 */
+  tbody.querySelectorAll(".del").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = btn.dataset.id;
+      if(confirm("確定刪除此筆紀錄？")){
+        const rec = sessions.find(r=> r.id == id);
+        if(rec){
+          /* 刪除時，學生應付金額也應扣回這筆尚未付款的金額
+             這裡保守作法：不主動回沖 studentDue，避免已對帳混亂。
+             需要回沖的話，打開下一行： */
+          // studentDue = Math.max(0, studentDue - (rec.money||0));
+          sessions = sessions.filter(r=> r.id != id);
+          save();
+          // localStorage.setItem("tutor_due", JSON.stringify(studentDue));
+          render(); updateDisplay();
+        }
+      }
+    });
   });
+
   updateDisplay();
 }
 
-// 預設填入現在日期時間
+/* 預設填入現在日期時間（四捨五入到 5 分鐘） */
 function initDefaults(){
   const now=new Date(new Date().toLocaleString("en-US",{timeZone:tz}));
-  $("date").value=now.toISOString().slice(0,10);
   const mins=now.getMinutes();
   const rounded=Math.round(mins/5)*5;
   now.setMinutes(rounded,0,0);
-  $("time").value=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+  $("date").value = now.toISOString().slice(0,10);
+  $("time").value = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
 }
 
-$("saveSalary").onclick=()=>{
-  const val=parseInt($("salary").value);
-  if(!val||val<=0)return alert("請輸入正確薪水");
-  salary=val;
-  localStorage.setItem("tutor_salary",JSON.stringify(salary));
+/* 事件綁定 */
+$("saveSalary").addEventListener("click", ()=>{
+  const val = parseInt($("salary").value, 10);
+  if(!val || val<=0) return alert("請輸入正確薪水（正整數）");
+  salary = val;
+  localStorage.setItem("tutor_salary", JSON.stringify(salary));
   updateDisplay();
-};
+});
 
-$("addBtn").onclick=()=>{
-  if(salary<=0)return alert("請先設定薪水");
-  const date=$("date").value,time=$("time").value,dur=parseInt($("dur").value);
-  if(!date||!time)return alert("請填日期與時間");
+$("addBtn").addEventListener("click", ()=>{
+  if(salary<=0) return alert("請先設定薪水");
+  const date=$("date").value, time=$("time").value, dur=parseInt($("dur").value,10);
+  if(!date || !time) return alert("請填日期與時間");
   const start=new Date(`${date}T${time}:00+08:00`);
-  const end=new Date(start.getTime()+dur*60000);
-  const money=Math.round((dur/60)*salary);
-  sessions.push({id:Date.now(),start:start.toISOString(),end:end.toISOString(),dur:dur,note:$("note").value,money:money});
-  studentDue+=money;
-  localStorage.setItem("tutor_due",JSON.stringify(studentDue));
-  save();render();$("note").value="";initDefaults();
-};
+  const end=new Date(start.getTime() + dur*60000);
+  const money = Math.round((dur/60)*salary);
+  sessions.push({
+    id: Date.now(),
+    start: start.toISOString(),
+    end: end.toISOString(),
+    dur: dur,
+    note: $("note").value,
+    money: money
+  });
+  studentDue += money;
+  localStorage.setItem("tutor_due", JSON.stringify(studentDue));
+  save(); render(); $("note").value=""; initDefaults();
+});
 
-$("exportBtn").onclick=()=>{
+$("exportBtn").addEventListener("click", ()=>{
   const rows=[["日期","開始","結束","時長(分鐘)","金額","備註"]];
-  sessions.forEach(s=>rows.push([fmtDate(new Date(s.start)),fmtTime(new Date(s.start)),fmtTime(new Date(s.end)),s.dur,s.money,s.note||""]));
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
-  const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="tutor_records.csv";a.click();URL.revokeObjectURL(url);
-};
-$("clearBtn").onclick=()=>{if(confirm("清空全部？")){sessions=[];save();studentDue=0;localStorage.setItem("tutor_due",0);render();}};
-$("payBtn").onclick=()=>{if(confirm("確定已付款？")){studentDue=0;localStorage.setItem("tutor_due",0);updateDisplay();}};
-initDefaults();render();
+  sessions.forEach(s=>{
+    rows.push([
+      fmtDate(new Date(s.start)),
+      fmtTime(new Date(s.start)),
+      fmtTime(new Date(s.end)),
+      s.dur,
+      currency(s.money),
+      s.note||""
+    ]);
+  });
+  const csv = rows.map(r=> r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download="tutor_records.csv"; a.click();
+  URL.revokeObjectURL(url);
+});
+
+$("clearBtn").addEventListener("click", ()=>{
+  if(confirm("這會刪除本機全部紀錄並清空應付金額，確定嗎？")){
+    sessions=[]; save();
+    studentDue=0; localStorage.setItem("tutor_due","0");
+    render(); initDefaults();
+  }
+});
+
+$("payBtn").addEventListener("click", ()=>{
+  if(studentDue<=0) return alert("目前沒有未付金額。");
+  if(confirm(`確認收到付款：${currency(studentDue)} 元？`)){
+    studentDue=0;
+    localStorage.setItem("tutor_due","0");
+    updateDisplay();
+  }
+});
+
+/* 初始化 */
+initDefaults();
+render();
 </script>
 </body>
 </html>
