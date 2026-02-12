@@ -1,0 +1,357 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&family=Orbitron:wght@500;700&display=swap");
+
+:root {
+  --bg-top: #02030a;
+  --bg-mid: #061732;
+  --bg-bottom: #150821;
+  --panel-bg: rgba(9, 16, 36, 0.82);
+  --panel-border: rgba(120, 201, 255, 0.34);
+  --text-main: #eff6ff;
+  --text-sub: #9bb2d9;
+  --accent-a: #59f2ff;
+  --accent-b: #ff66c6;
+  --accent-c: #ffdf70;
+  --danger: #ff6d82;
+  --ok: #7bffb2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Noto Sans TC", "Segoe UI", sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(1100px 720px at 8% -10%, #16386f 0%, transparent 56%),
+    radial-gradient(980px 780px at 100% -8%, #45155d 0%, transparent 54%),
+    linear-gradient(155deg, var(--bg-top), var(--bg-mid) 56%, var(--bg-bottom));
+}
+
+.shell {
+  width: min(1250px, 100%);
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-family: "Orbitron", "Noto Sans TC", sans-serif;
+  font-size: clamp(24px, 4vw, 44px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 16px rgba(89, 242, 255, 0.45),
+    0 0 26px rgba(255, 102, 198, 0.28);
+}
+
+.tagline {
+  margin: 4px 0 0;
+  color: var(--text-sub);
+}
+
+.quick-actions {
+  display: flex;
+  gap: 10px;
+}
+
+button {
+  border: 1px solid var(--panel-border);
+  border-radius: 11px;
+  padding: 8px 13px;
+  color: var(--text-main);
+  font: inherit;
+  background: linear-gradient(135deg, rgba(26, 54, 101, 0.95), rgba(57, 14, 89, 0.92));
+  cursor: pointer;
+  transition: transform 130ms ease, filter 130ms ease;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(190px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.panel {
+  padding: 12px;
+  border-radius: 13px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  backdrop-filter: blur(7px);
+  box-shadow: inset 0 0 26px rgba(99, 180, 255, 0.08);
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--accent-a);
+}
+
+.panel p {
+  margin: 4px 0;
+  color: var(--text-sub);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.panel span {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.mission-panel p {
+  font-size: 13px;
+}
+
+.meter {
+  width: 100%;
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.09);
+  margin-bottom: 7px;
+}
+
+.meter > div {
+  width: 40%;
+  height: 100%;
+  transition: width 100ms linear;
+}
+
+#hpBar {
+  background: linear-gradient(90deg, #ff6f7a, #ffb474);
+}
+
+#shieldBar {
+  background: linear-gradient(90deg, #58e6ff, #80a7ff);
+}
+
+#energyBar {
+  background: linear-gradient(90deg, #66ffcb, #57d3ff);
+}
+
+#xpBar {
+  background: linear-gradient(90deg, #ffd867, #ffa65d);
+}
+
+#ultBar {
+  background: linear-gradient(90deg, #ff6fd5, #8b7dff);
+}
+
+.arena-wrap {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  box-shadow:
+    0 16px 45px rgba(3, 8, 20, 0.65),
+    inset 0 0 44px rgba(89, 242, 255, 0.08);
+  background: #020410;
+}
+
+#arena {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(160deg, #08112a, #060914);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 4, 14, 0.74);
+  padding: 18px;
+  z-index: 3;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.overlay-card {
+  width: min(620px, 100%);
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: rgba(8, 14, 34, 0.94);
+}
+
+.overlay-card h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+
+.overlay-card p {
+  margin: 0 0 14px;
+  color: var(--text-sub);
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+.overlay-actions {
+  display: grid;
+  gap: 9px;
+}
+
+.upgrade-btn {
+  text-align: left;
+  line-height: 1.35;
+  padding: 10px 12px;
+}
+
+.feed {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: grid;
+  gap: 6px;
+  max-width: min(70%, 620px);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.feed-item {
+  display: inline-block;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 202, 255, 0.38);
+  background: rgba(8, 15, 36, 0.7);
+  font-size: 13px;
+}
+
+.dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: min(90%, 780px);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(164, 207, 255, 0.4);
+  background: linear-gradient(145deg, rgba(8, 14, 34, 0.92), rgba(19, 16, 50, 0.88));
+  box-shadow: 0 8px 24px rgba(2, 6, 16, 0.6);
+  z-index: 4;
+}
+
+.dialogue.hidden {
+  display: none;
+}
+
+.dialogue-speaker {
+  margin: 0 0 4px;
+  color: #7fefff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.dialogue-text {
+  margin: 0;
+  color: #e8f2ff;
+  line-height: 1.35;
+}
+
+.controls-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 14px 0 10px;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.controls-help strong {
+  color: var(--accent-c);
+  font-weight: 700;
+}
+
+.touch-pad {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.move-pad,
+.action-pad {
+  display: grid;
+  gap: 8px;
+}
+
+.move-pad .row {
+  display: flex;
+  gap: 8px;
+}
+
+.action-pad {
+  grid-template-columns: repeat(3, minmax(80px, 1fr));
+}
+
+[data-touch="fire"] {
+  border-color: rgba(255, 102, 198, 0.55);
+}
+
+[data-touch="bomb"] {
+  border-color: rgba(255, 223, 112, 0.58);
+}
+
+[data-touch="ult"] {
+  border-color: rgba(139, 125, 255, 0.6);
+}
+
+[data-touch="support"] {
+  border-color: rgba(255, 170, 122, 0.6);
+}
+
+@media (max-width: 1120px) {
+  .hud {
+    grid-template-columns: repeat(2, minmax(210px, 1fr));
+  }
+
+  .mission-panel {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    flex-direction: column;
+  }
+
+  .hud {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-panel {
+    grid-column: auto;
+  }
+
+  .touch-pad {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>裂隙奔襲：終焉引擎</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>裂隙奔襲：終焉引擎</h1>
+          <p class="tagline">在時間崩壞裡求生，讓你的戰鬥點燃整個宇宙。</p>
+        </div>
+        <div class="quick-actions">
+          <button id="pauseBtn" type="button">暫停</button>
+          <button id="restartBtn" type="button">重開</button>
+        </div>
+      </header>
+
+      <section class="hud">
+        <article class="panel">
+          <h2>戰況</h2>
+          <p>分數 <span id="score">0</span></p>
+          <p>最高分 <span id="highScore">0</span></p>
+          <p>波次 <span id="wave">1</span></p>
+          <p>連段倍率 x<span id="combo">1.0</span>（<span id="comboRank">E</span>）</p>
+          <p>狀態 <span id="status">待命</span></p>
+        </article>
+
+        <article class="panel">
+          <h2>生存</h2>
+          <p>生命 <span id="hpText">100 / 100</span></p>
+          <div class="meter"><div id="hpBar"></div></div>
+          <p>護盾 <span id="shieldText">50 / 50</span></p>
+          <div class="meter"><div id="shieldBar"></div></div>
+          <p>能量 <span id="energyText">100 / 100</span></p>
+          <div class="meter"><div id="energyBar"></div></div>
+        </article>
+
+        <article class="panel">
+          <h2>成長</h2>
+          <p>等級 <span id="level">1</span></p>
+          <p>經驗 <span id="xpText">0 / 120</span></p>
+          <div class="meter"><div id="xpBar"></div></div>
+          <p>星核資產 <span id="cores">0</span></p>
+          <p>本局星核 +<span id="runCores">0</span></p>
+        </article>
+
+        <article class="panel">
+          <h2>系統</h2>
+          <p>職業 <span id="pilotClass">未選擇</span></p>
+          <p>武器 <span id="weapon">脈衝槍</span></p>
+          <p>炸彈 <span id="bombs">2</span> | 復甦 <span id="revives">0</span></p>
+          <p>衝刺冷卻 <span id="dashCd">0.0s</span></p>
+          <p>終極充能 <span id="ultText">0%</span></p>
+          <div class="meter"><div id="ultBar"></div></div>
+        </article>
+
+        <article class="panel mission-panel">
+          <h2>任務與事件</h2>
+          <p id="missionTitle">任務：準備中</p>
+          <p id="missionProgress">進度：0 / 0</p>
+          <p id="missionReward">獎勵：-</p>
+          <p id="eventText">世界事件：無</p>
+        </article>
+
+        <article class="panel">
+          <h2>戰役章節</h2>
+          <p>章節 <span id="chapterName">序章：灰燼甦醒</span></p>
+          <p>區段 <span id="chapterSector">S-01</span></p>
+          <p>導演威脅 <span id="threatText">1.00x</span></p>
+          <p>支援指令 <span id="allyText">0</span></p>
+          <p>成就解鎖 <span id="achievementText">0</span></p>
+        </article>
+      </section>
+
+      <section class="arena-wrap">
+        <canvas id="arena" width="960" height="540" aria-label="戰鬥區域"></canvas>
+
+        <div id="overlay" class="overlay hidden">
+          <div class="overlay-card">
+            <h2 id="overlayTitle">標題</h2>
+            <p id="overlayText">內容</p>
+            <div id="overlayActions" class="overlay-actions"></div>
+          </div>
+        </div>
+
+        <div id="feed" class="feed" aria-live="polite"></div>
+
+        <div id="dialogueBox" class="dialogue hidden" aria-live="polite">
+          <p id="dialogueSpeaker" class="dialogue-speaker">NPC</p>
+          <p id="dialogueText" class="dialogue-text">...</p>
+        </div>
+      </section>
+
+      <section class="controls-help">
+        <p><strong>移動：</strong>WASD / 方向鍵</p>
+        <p><strong>瞄準：</strong>滑鼠</p>
+        <p><strong>開火：</strong>滑鼠左鍵長按 / 空白鍵</p>
+        <p><strong>衝刺：</strong>Shift</p>
+        <p><strong>子彈時間：</strong>Q（長按）</p>
+        <p><strong>炸彈：</strong>E</p>
+        <p><strong>終極：</strong>F</p>
+        <p><strong>支援打擊：</strong>G</p>
+        <p><strong>換武：</strong>1~0 或 [ / ]（已購買武器輪替）</p>
+        <p><strong>商店：</strong>O（開始 / 暫停介面）</p>
+        <p><strong>章節星圖：</strong>M（開始 / 暫停介面）</p>
+        <p><strong>科技樹：</strong>T（開始 / 暫停介面）</p>
+        <p><strong>陣營通訊：</strong>N（開始 / 暫停介面）</p>
+        <p><strong>檔案庫：</strong>C（開始 / 暫停介面）</p>
+      </section>
+
+      <section class="touch-pad" aria-label="觸控操作">
+        <div class="move-pad">
+          <button data-touch="up">上</button>
+          <div class="row">
+            <button data-touch="left">左</button>
+            <button data-touch="down">下</button>
+            <button data-touch="right">右</button>
+          </div>
+        </div>
+        <div class="action-pad">
+          <button data-touch="fire">開火</button>
+          <button data-touch="dash">衝刺</button>
+          <button data-touch="slow">慢時</button>
+          <button data-touch="bomb">炸彈</button>
+          <button data-touch="ult">終極</button>
+          <button data-touch="support">支援</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/riftGame.js"></script>
+  </body>
+</html>
