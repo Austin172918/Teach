@@ -41,6 +41,17 @@ body {
   padding: 18px;
 }
 
+.rotate-tip {
+  display: none;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 227, 148, 0.45);
+  background: rgba(74, 51, 9, 0.32);
+  color: #ffe7a8;
+  font-size: 14px;
+}
+
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -190,6 +201,7 @@ button:active {
   background: rgba(2, 4, 14, 0.74);
   padding: 18px;
   z-index: 3;
+  overflow: auto;
 }
 
 .overlay.hidden {
@@ -198,6 +210,8 @@ button:active {
 
 .overlay-card {
   width: min(620px, 100%);
+  max-height: min(84vh, 760px);
+  overflow: auto;
   padding: 18px;
   border-radius: 14px;
   border: 1px solid var(--panel-border);
@@ -349,6 +363,31 @@ button:active {
 }
 
 @media (max-width: 760px) {
+  .shell {
+    padding: 10px;
+  }
+
+  .rotate-tip {
+    display: block;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    padding: 12px;
+  }
+
+  .overlay-card {
+    width: min(96vw, 760px);
+    max-height: 88vh;
+    padding: 14px;
+  }
+
+  .overlay-card h2 {
+    font-size: 22px;
+  }
+
   .topbar {
     flex-direction: column;
   }
@@ -383,5 +422,24 @@ button:active {
   .controls-help {
     font-size: 13px;
     gap: 6px 10px;
+  }
+
+  body.overlay-open .touch-pad,
+  body.overlay-open .controls-help {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .rotate-tip {
+    display: none;
+  }
+
+  .hud {
+    grid-template-columns: repeat(3, minmax(170px, 1fr));
+  }
+
+  .panel p {
+    font-size: 13px;
   }
 }

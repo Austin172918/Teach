@@ -3998,10 +3998,12 @@ function showOverlay(title, text, actions) {
   });
 
   overlayEl.classList.remove("hidden");
+  document.body.classList.add("overlay-open");
 }
 
 function hideOverlay() {
   overlayEl.classList.add("hidden");
+  document.body.classList.remove("overlay-open");
 }
 
 function findNearestEnemy(activeState, x, y) {
