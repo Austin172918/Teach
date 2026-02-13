@@ -58,6 +58,7 @@ const dialogueTextEl = document.querySelector("#dialogueText");
 
 const pauseBtn = document.querySelector("#pauseBtn");
 const restartBtn = document.querySelector("#restartBtn");
+const fullBtn = document.querySelector("#fullBtn");
 const touchButtons = document.querySelectorAll("[data-touch]");
 
 const WORLD_WIDTH = 960;
@@ -837,6 +838,56 @@ const ACHIEVEMENT_DEFS = [
   },
 ];
 
+const FUNNY_MOMENTS = [
+  {
+    title: "戰地咖啡車漂移過境",
+    color: "#ffd8a8",
+    dialogue: "臨時補給：拿鐵加三倍濃縮。副作用是你會想挑戰首領。",
+    apply(activeState) {
+      activeState.player.energy = Math.min(activeState.player.maxEnergy, activeState.player.energy + 34);
+      activeState.score += 180;
+    },
+  },
+  {
+    title: "宇宙貓踏過控制台",
+    color: "#ffc9ff",
+    dialogue: "貓咪已替你按下 17 個鍵。別問，先輸出就對了。",
+    apply(activeState) {
+      activeState.player.ultCharge = clamp(activeState.player.ultCharge + 16, 0, 100);
+      activeState.runCores += 6;
+    },
+  },
+  {
+    title: "內鬼廣播誤開麥",
+    color: "#b8e7ff",
+    dialogue: "前線聽到敵軍在吵晚餐要吃什麼，火力下降 8 秒。",
+    apply(activeState) {
+      activeState.directorThreat = clamp(activeState.directorThreat - 0.12, 0.9, 3.2);
+      activeState.player.damageResist = clamp(activeState.player.damageResist + 0.02, 0, 0.7);
+    },
+  },
+  {
+    title: "保全機器人跳廣場舞",
+    color: "#c6ffd0",
+    dialogue: "敵軍步伐被打亂。你現在的移動速度看起來超有節奏。",
+    apply(activeState) {
+      activeState.player.speed = Math.min(activeState.player.speed * 1.04, 420);
+      activeState.player.energy = Math.min(activeState.player.maxEnergy, activeState.player.energy + 20);
+    },
+  },
+  {
+    title: "戰術 AI 發錯迷因包",
+    color: "#ffe29c",
+    dialogue: "整個頻道都在笑，連你的護盾都笑到回滿一截。",
+    apply(activeState) {
+      activeState.player.shield = Math.min(activeState.player.maxShield, activeState.player.shield + 24);
+      activeState.player.hp = Math.min(activeState.player.maxHp, activeState.player.hp + 10);
+    },
+  },
+];
+
+const FUNNY_SPEAKERS = ["戰地脫口秀 AI", "前線吐槽員", "匿名補給員", "宇宙綜藝台"];
+
 const input = {
   keys: new Set(),
   justPressed: new Set(),
@@ -854,6 +905,7 @@ const input = {
     fire: false,
     slow: false,
   },
+  touchAimPointerId: null,
   queuedDash: false,
   queuedBomb: false,
   queuedUlt: false,
@@ -920,6 +972,7 @@ function createState() {
     missionSafeTimer: 0,
     worldEvent: null,
     worldEventCooldown: randRange(Math.random, 16, 24),
+    comedyCooldown: randRange(Math.random, 12, 20),
     eventMultiplier: {
       score: 1,
       pickup: 0,
@@ -949,6 +1002,7 @@ function createState() {
       storyChoices: 0,
       relicEvents: 0,
       clutchKills: 0,
+      funnyMoments: 0,
     },
     player: createBasePlayer(totalCores, profile),
   };
@@ -1390,16 +1444,22 @@ function startRun(classId) {
 
 function restartGame() {
   state = createState();
+  clearRuntimeInputState();
+  showStartOverlay();
+}
+
+function clearRuntimeInputState() {
   input.keys.clear();
   input.justPressed.clear();
   input.mouse.down = false;
+  input.mouse.inside = false;
   input.touch.up = false;
   input.touch.down = false;
   input.touch.left = false;
   input.touch.right = false;
   input.touch.fire = false;
   input.touch.slow = false;
-  showStartOverlay();
+  input.touchAimPointerId = null;
 }
 
 function prepareWave(activeState) {
@@ -1593,6 +1653,7 @@ function update(dt) {
   updateMission(state, dt);
   updateCombo(state, dt);
   updateAchievements(state);
+  updateComedyMoments(state, dt);
 
   if (
     state.spawnQueue.length === 0 &&
@@ -1648,6 +1709,11 @@ function updatePlayerMovement(activeState, dt) {
 
   if (input.mouse.inside) {
     player.facing = angleBetween(player.x, player.y, input.mouse.x, input.mouse.y);
+  } else if (input.touch.fire && activeState.enemies.length > 0) {
+    const target = findNearestEnemy(activeState, player.x, player.y);
+    if (target) {
+      player.facing = angleBetween(player.x, player.y, target.x, target.y);
+    }
   } else if (moving) {
     player.facing = Math.atan2(my, mx);
   }
@@ -2580,6 +2646,30 @@ function updateAchievements(activeState) {
     pushFeed(`成就達成：${ach.title}（+${ach.rewardCores} 星核）`, "#b7ff9a");
     queueDialogue("戰役記錄儀", `成就解鎖「${ach.title}」：${ach.desc}`, 3.9);
   }
+}
+
+function updateComedyMoments(activeState, dt) {
+  if (activeState.phase !== "running") {
+    return;
+  }
+
+  activeState.comedyCooldown -= dt;
+  if (activeState.comedyCooldown > 0) {
+    return;
+  }
+
+  activeState.comedyCooldown = randRange(activeState.rng, 16, 28);
+  if (activeState.rng() > 0.42) {
+    return;
+  }
+
+  const moment = pickRandom(FUNNY_MOMENTS, activeState.rng);
+  moment.apply(activeState);
+  activeState.stats.funnyMoments += 1;
+
+  const speaker = pickRandom(FUNNY_SPEAKERS, activeState.rng);
+  pushFeed(`搞笑亂入：${moment.title}`, moment.color);
+  queueDialogue(speaker, moment.dialogue, 4.1);
 }
 
 function startWorldEvent(activeState) {
@@ -3770,27 +3860,63 @@ function bindEvents() {
     input.keys.delete(normalizeKey(event.key));
   });
 
-  canvas.addEventListener("mousemove", (event) => {
+  const updateCanvasPointer = (event) => {
     const point = toWorldPoint(event.clientX, event.clientY);
     input.mouse.x = point.x;
     input.mouse.y = point.y;
+  };
+
+  canvas.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+    updateCanvasPointer(event);
     input.mouse.inside = true;
+    if (event.pointerType === "mouse") {
+      input.mouse.down = true;
+    } else {
+      input.touch.fire = true;
+      input.touchAimPointerId = event.pointerId;
+    }
+    canvas.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
   });
 
-  canvas.addEventListener("mousedown", () => {
-    input.mouse.down = true;
+  canvas.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "mouse" || input.touchAimPointerId === event.pointerId) {
+      updateCanvasPointer(event);
+      input.mouse.inside = true;
+    }
   });
 
-  window.addEventListener("mouseup", () => {
-    input.mouse.down = false;
-  });
+  const releaseCanvasPointer = (event) => {
+    if (event.pointerType === "mouse") {
+      input.mouse.down = false;
+      if (event.type === "pointerleave") {
+        input.mouse.inside = false;
+      }
+      return;
+    }
+    if (input.touchAimPointerId === event.pointerId) {
+      input.touch.fire = false;
+      input.touchAimPointerId = null;
+      input.mouse.inside = false;
+      canvas.releasePointerCapture?.(event.pointerId);
+    }
+  };
 
-  canvas.addEventListener("mouseleave", () => {
-    input.mouse.inside = false;
+  canvas.addEventListener("pointerup", releaseCanvasPointer);
+  canvas.addEventListener("pointercancel", releaseCanvasPointer);
+  canvas.addEventListener("pointerleave", releaseCanvasPointer);
+  canvas.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
   });
 
   pauseBtn.addEventListener("click", togglePause);
   restartBtn.addEventListener("click", restartGame);
+  fullBtn?.addEventListener("click", toggleFullscreen);
+  document.addEventListener("fullscreenchange", syncFullscreenButtonLabel);
+  syncFullscreenButtonLabel();
 
   touchButtons.forEach((button) => {
     const key = button.dataset.touch;
@@ -3825,6 +3951,34 @@ function bindEvents() {
     button.addEventListener("pointercancel", onUp);
     button.addEventListener("pointerleave", onUp);
   });
+
+  window.addEventListener("blur", clearRuntimeInputState);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      clearRuntimeInputState();
+    }
+  });
+}
+
+function syncFullscreenButtonLabel() {
+  if (!fullBtn) {
+    return;
+  }
+  fullBtn.textContent = document.fullscreenElement ? "離開全螢幕" : "全螢幕";
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    const request = document.documentElement.requestFullscreen;
+    if (typeof request === "function") {
+      Promise.resolve(request.call(document.documentElement)).catch(() => {});
+    }
+    return;
+  }
+  const exit = document.exitFullscreen;
+  if (typeof exit === "function") {
+    Promise.resolve(exit.call(document)).catch(() => {});
+  }
 }
 
 function showOverlay(title, text, actions) {

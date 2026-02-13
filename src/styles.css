@@ -28,6 +28,7 @@ body {
 body {
   font-family: "Noto Sans TC", "Segoe UI", sans-serif;
   color: var(--text-main);
+  overscroll-behavior: none;
   background:
     radial-gradient(1100px 720px at 8% -10%, #16386f 0%, transparent 56%),
     radial-gradient(980px 780px at 100% -8%, #45155d 0%, transparent 54%),
@@ -177,6 +178,7 @@ button:active {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
+  touch-action: none;
   background: linear-gradient(160deg, #08112a, #060914);
 }
 
@@ -295,6 +297,7 @@ button:active {
   display: flex;
   justify-content: space-between;
   gap: 14px;
+  user-select: none;
 }
 
 .move-pad,
@@ -310,6 +313,13 @@ button:active {
 
 .action-pad {
   grid-template-columns: repeat(3, minmax(80px, 1fr));
+}
+
+[data-touch] {
+  min-height: 46px;
+  min-width: 70px;
+  font-weight: 700;
+  touch-action: manipulation;
 }
 
 [data-touch="fire"] {
@@ -353,5 +363,25 @@ button:active {
 
   .touch-pad {
     flex-direction: column;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 8px;
+    border-radius: 12px;
+    background: rgba(4, 9, 24, 0.78);
+  }
+
+  .action-pad {
+    grid-template-columns: repeat(3, minmax(88px, 1fr));
+  }
+
+  [data-touch] {
+    min-height: 52px;
+    font-size: 16px;
+  }
+
+  .controls-help {
+    font-size: 13px;
+    gap: 6px 10px;
   }
 }
