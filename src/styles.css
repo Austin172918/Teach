@@ -326,7 +326,7 @@ button:active {
 }
 
 .action-pad {
-  grid-template-columns: repeat(3, minmax(80px, 1fr));
+  grid-template-columns: repeat(4, minmax(80px, 1fr));
 }
 
 [data-touch] {
@@ -350,6 +350,11 @@ button:active {
 
 [data-touch="support"] {
   border-color: rgba(255, 170, 122, 0.6);
+}
+
+[data-touch="prevWeapon"],
+[data-touch="nextWeapon"] {
+  border-color: rgba(145, 198, 255, 0.58);
 }
 
 @media (max-width: 1120px) {
@@ -411,7 +416,7 @@ button:active {
   }
 
   .action-pad {
-    grid-template-columns: repeat(3, minmax(88px, 1fr));
+    grid-template-columns: repeat(4, minmax(82px, 1fr));
   }
 
   [data-touch] {

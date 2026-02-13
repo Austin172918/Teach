@@ -68,7 +68,12 @@ const STORAGE_KEYS = {
   cores: "rift_runner_total_cores_v2",
   bestWave: "rift_runner_best_wave_v2",
   profile: "rift_runner_profile_v4",
+  leaderboard: "rift_runner_leaderboard_v1",
+  runHistory: "rift_runner_run_history_v1",
 };
+
+const MAX_LEADERBOARD_ENTRIES = 20;
+const MAX_RUN_HISTORY_ENTRIES = 36;
 
 const DEFAULT_UNLOCKED_WEAPONS = ["pulse", "scatter", "rail", "arc"];
 
@@ -533,6 +538,95 @@ const TALENT_POOL = [
       state.player.coreMultiplier *= 1.16;
     },
   },
+  {
+    id: "switch_tactics",
+    title: "戰術換裝",
+    text: "切換武器後觸發短暫超載連射",
+    apply(state) {
+      state.player.switchTacticsLevel += 1;
+    },
+  },
+  {
+    id: "dash_pulse",
+    title: "相位震波",
+    text: "衝刺時釋放震波，清彈並傷害周圍敵人",
+    apply(state) {
+      state.player.dashPulseLevel += 1;
+    },
+  },
+  {
+    id: "counter_burst",
+    title: "反擊晶格",
+    text: "受擊時自動回擊一次範圍脈衝",
+    apply(state) {
+      state.player.counterBurstLevel += 1;
+    },
+  },
+  {
+    id: "magnet_field",
+    title: "拾荒磁場",
+    text: "大幅強化拾取吸附範圍",
+    apply(state) {
+      state.player.magnetRadius += 42;
+    },
+  },
+  {
+    id: "pulse_emitter",
+    title: "自律脈衝塔",
+    text: "每隔數秒自動釋放傷害脈衝",
+    apply(state) {
+      state.player.pulseEmitterLevel += 1;
+      state.player.pulseEmitterCd = Math.min(state.player.pulseEmitterCd, 2.2);
+    },
+  },
+  {
+    id: "emergency_script",
+    title: "緊急協議",
+    text: "瀕死時自動啟動護盾回補與短暫無敵",
+    apply(state) {
+      state.player.emergencyProtocol += 1;
+    },
+  },
+  {
+    id: "supply_printer",
+    title: "補給列印機",
+    text: "擊殺連段累積後自動列印隨機補給",
+    apply(state) {
+      state.player.supplyPrinterLevel += 1;
+    },
+  },
+  {
+    id: "pickup_pulse",
+    title: "拾取脈衝",
+    text: "每次拾取時觸發小型震盪波，清除附近子彈",
+    apply(state) {
+      state.player.pickupPulseLevel += 1;
+    },
+  },
+  {
+    id: "support_drones",
+    title: "支援聯動",
+    text: "施放支援打擊後，短時間獲得額外僚機火力",
+    apply(state) {
+      state.player.supportDroneLevel += 1;
+    },
+  },
+  {
+    id: "phase_splitter",
+    title: "相位分裂矛",
+    text: "連續開火後自動追加穿透分裂矛",
+    apply(state) {
+      state.player.phaseSplitterLevel += 1;
+    },
+  },
+  {
+    id: "echo_matrix",
+    title: "回聲矩陣",
+    text: "非回聲武器也可獲得彈道反彈效果",
+    apply(state) {
+      state.player.echoMatrix += 1;
+    },
+  },
 ];
 
 const WAVE_BOONS = [
@@ -584,7 +678,50 @@ const WAVE_BOONS = [
       state.player.dashCooldown *= 0.88;
     },
   },
+  {
+    id: "relay_support",
+    title: "戰場中繼",
+    text: "支援打擊充能 +1 且冷卻縮短",
+    apply(state) {
+      state.supportCharges += 1;
+      state.player.supportCooldownScale *= 0.82;
+      state.supportCd = Math.max(0, state.supportCd - 4);
+    },
+  },
+  {
+    id: "smart_salvage",
+    title: "智慧回收",
+    text: "接下來一波掉落率提升並自動吸附拾取",
+    apply(state) {
+      state.eventMultiplier.pickup = Math.max(state.eventMultiplier.pickup, 0.28);
+      state.player.magnetRadius += 36;
+    },
+  },
+  {
+    id: "phase_cache",
+    title: "相位快取",
+    text: "本波前 20 秒進入超載換武狀態",
+    apply(state) {
+      state.player.switchTacticsLevel = Math.max(1, state.player.switchTacticsLevel);
+      state.player.switchBuffTimer = Math.max(state.player.switchBuffTimer, 20);
+    },
+  },
 ];
+
+const RELIC_BONUS_LABELS = {
+  bonus_0: "武器輸出",
+  bonus_1: "射控穩定",
+  bonus_2: "生命矩陣",
+  bonus_3: "護盾矩陣",
+  bonus_4: "能量回充",
+  bonus_5: "終極充能",
+  bonus_6: "暴擊同步",
+  bonus_7: "星核收益",
+  bonus_8: "分數增益",
+  bonus_9: "減傷屏障",
+  bonus_10: "支援編隊",
+  bonus_11: "鏈鎖增幅",
+};
 
 const CHAPTER_MAP = [
   {
@@ -761,22 +898,144 @@ const TECH_NODE_NAME_BY_ID = TECH_TREE_NODES.reduce((map, node) => {
   return map;
 }, {});
 
+const NPC_PROFILES = [
+  {
+    id: "aela",
+    name: "艾拉指揮官",
+    faction: "曙光議會",
+    tone: "軍紀鐵則",
+    style: "短句軍令",
+    arcTitle: "失艦復國",
+    arcBrief: "在灰燼之夜失去旗艦，執念是奪回母星主港。",
+  },
+  {
+    id: "mia",
+    name: "米亞觀測員",
+    faction: "曙光議會",
+    tone: "詩性預言",
+    style: "比喻與預兆",
+    arcTitle: "三重未來",
+    arcBrief: "能看見三條未來線，正尋找讓同伴全員生還的那一條。",
+  },
+  {
+    id: "hermin",
+    name: "赫敏情報官",
+    faction: "深空行會",
+    tone: "冷面諜報",
+    style: "偵訊式提問",
+    arcTitle: "內鬼名冊",
+    arcBrief: "追查洩密者多年，手上名冊只剩最後一個代號。",
+  },
+  {
+    id: "ivan",
+    name: "伊文航長",
+    faction: "深空行會",
+    tone: "痞氣老船長",
+    style: "黑色幽默",
+    arcTitle: "債務遠征",
+    arcBrief: "欠下三個星港的債，只能靠高危委託一路還命。",
+  },
+  {
+    id: "k7",
+    name: "K-7 工程長",
+    faction: "灰燼機巧",
+    tone: "機械冷笑話",
+    style: "數據播報",
+    arcTitle: "第一方程",
+    arcBrief: "試圖證明宇宙可被一條方程式壓縮並重啟。",
+  },
+];
+
+const NPC_BY_ID = NPC_PROFILES.reduce((map, npc) => {
+  map[npc.id] = npc;
+  return map;
+}, {});
+
 const FACTION_NPCS = {
-  曙光議會: [
-    { name: "艾拉指揮官", tone: "冷靜" },
-    { name: "雷奧執行官", tone: "果斷" },
-    { name: "米亞觀測員", tone: "理性" },
-  ],
-  深空行會: [
-    { name: "伊文航長", tone: "老練" },
-    { name: "赫敏情報官", tone: "敏銳" },
-    { name: "索恩策士", tone: "沉著" },
-  ],
-  灰燼機巧: [
-    { name: "K-7 工程長", tone: "機械" },
-    { name: "盧卡修復師", tone: "硬派" },
-    { name: "薇爾鑄造官", tone: "激進" },
-  ],
+  曙光議會: [NPC_BY_ID.aela, NPC_BY_ID.mia],
+  深空行會: [NPC_BY_ID.hermin, NPC_BY_ID.ivan],
+  灰燼機巧: [NPC_BY_ID.k7],
+};
+
+const NPC_DIALOGUE_BANK = {
+  aela: {
+    comm: ({ chapterName }) =>
+      `【軍令第七條】${chapterName} 不需要奇蹟，只需要精確執行。我的旗艦在那裡沉沒，今天我們把旗子插回去。`,
+    deployment: ({ chapterName, chapterDesc }) =>
+      `全隊聽令：部署 ${chapterName}。${chapterDesc}。我不接受第二次失敗。`,
+    support: () => "砲擊窗口 6 秒，按我標記前推。想活著回港，就不要離開隊形。",
+    chapter_2: () => "鏡城會放大恐懼，別看倒影，只看準星。",
+    chapter_3: () => "黑井前線不講運氣，誰停火誰先陣亡。",
+    chapter_4: () => "事件密度升高，全員照戰術表 C-12 機動。",
+    chapter_5: () => "終焉穹環進入紅區。今天不是撤退日。",
+    relic: () => "遺物先回收，私藏者戰後上軍法。",
+    worldEvent: ({ eventSummary }) => `事件通報：${eventSummary}。保持推進，不得脫隊。`,
+    mission: () => "合約完成。補給優先前排，立即整隊。",
+    storyNode: ({ arcTitle }) => `劇情節點「${arcTitle}」開啟。決策會寫進戰史，別選軟弱答案。`,
+    storyDecision: ({ faction }) => `決策已簽核。戰線向「${faction}」偏轉，後果由我們承擔。`,
+  },
+  mia: {
+    comm: ({ chapterName }) =>
+      `我剛看見三條未來線。兩條在 ${chapterName} 崩潰，第三條由你把光拉回來。`,
+    deployment: ({ chapterName }) => `部署 ${chapterName}。記住，你每次閃避都在改寫一秒後的命運。`,
+    support: () => "我把軌道炮對齊你的心跳節奏，別停下，節拍不能斷。",
+    chapter_2: () => "重力透鏡已開，倒映中的你會說謊，聽我這邊的聲音。",
+    chapter_3: () => "黑井像一面沉默的海，別讓它吞掉你的名字。",
+    chapter_4: () => "潮汐穹頂開始抽絲，我們正站在世界的裂縫縫線上。",
+    chapter_5: () => "我看見終焉核心裂開了，請把最後一擊留給清醒的自己。",
+    relic: () => "遺物在低語，它記得上一輪文明的失敗，別重蹈覆轍。",
+    worldEvent: ({ eventSummary }) => `突發波動：${eventSummary}。這是未來在提醒我們改道。`,
+    mission: () => "任務完成。你剛剛的選擇，讓最壞那條時間線消失了。",
+    storyNode: ({ arcTitle }) => `新命運分岔「${arcTitle}」出現。請慎選，你在替所有人下注。`,
+    storyDecision: ({ faction }) => `時間線已偏轉至「${faction}」。我會盯著後續餘震。`,
+  },
+  hermin: {
+    comm: ({ chapterName }) =>
+      `情報修正：${chapterName} 至少有一名內鬼在放訊號。從現在起，把每條異常都當陷阱。`,
+    deployment: ({ chapterName }) => `滲透紀律啟動。進入 ${chapterName} 後，先活用掩體再談英雄。`,
+    support: () => "外圍火力由我偽裝成友軍訊號，敵方 6 秒內判斷會失真。",
+    chapter_2: () => "鏡城的異常不是天災，是人禍。有人在背後校準它。",
+    chapter_3: () => "刺殺編隊進場。別追單兵，先切斷他們指揮鏈。",
+    chapter_4: () => "潮汐事件過密，代表監聽站已被人動過手腳。",
+    chapter_5: () => "終焉穹環有人提前布樁。今天順便把名冊最後一頁清掉。",
+    relic: () => "遺物已封存。放心，我先替你把可疑指紋刮掉了。",
+    worldEvent: ({ eventSummary }) => `事件通報：${eventSummary}。我會追來源，你先保住火線。`,
+    mission: () => "合約已結案，款項乾淨。至少帳面上很乾淨。",
+    storyNode: ({ arcTitle }) => `劇情節點「${arcTitle}」已解鎖。選吧，我會記錄誰因此獲利。`,
+    storyDecision: ({ faction }) => `決策確認。受益陣營「${faction}」。後續監控已佈署。`,
+  },
+  ivan: {
+    comm: ({ chapterName }) =>
+      `嘿，${chapterName} 的賞金我先記你名下。活著回來，我請你喝最便宜那杯。`,
+    deployment: ({ chapterName, chapterDesc }) =>
+      `出港啦，目的地 ${chapterName}。${chapterDesc}。別緊張，我欠債欠到會笑。`,
+    support: () => "免費煙火來了。六秒內盡量輸出，帳單我晚點再寄你。",
+    chapter_2: () => "鏡城在搞花招？沒事，我見過更爛的導航系統。",
+    chapter_3: () => "突襲隊衝進來了，照老船規矩：先打跑最快那個。",
+    chapter_4: () => "事件太多就把它當折扣季，一波一波收掉就好。",
+    chapter_5: () => "終焉穹環看起來很貴，炸起來一定更貴，值得。",
+    relic: () => "找到遺物就像撿到錢包，重點是別在原地猶豫。",
+    worldEvent: ({ eventSummary }) => `臨時播報：${eventSummary}。好消息是，亂局通常最賺。`,
+    mission: () => "任務結單！我們又少欠一點，雖然還是欠很多。",
+    storyNode: ({ arcTitle }) => `新段子「${arcTitle}」上線。來吧，選一條最有利可圖的路。`,
+    storyDecision: ({ faction }) => `好，押「${faction}」。希望這次下注終於輪到我們贏。`,
+  },
+  k7: {
+    comm: ({ chapterName }) =>
+      `K-7 報告：章節 ${chapterName} 風險值 0.78。建議行為：持續射擊，停止慌張。`,
+    deployment: ({ chapterName }) =>
+      `部署完成。目標區 ${chapterName}。若恐懼上升，請重啟呼吸模組。`,
+    support: () => "軌道打擊已執行。效率估算 +22%。你現在看起來像可量產樣本。",
+    chapter_2: () => "重力透鏡增幅。你的翻車機率上升，但我已準備備援輪子。",
+    chapter_3: () => "刺客單位數量 +2。好消息：目標更密集，命中更快樂。",
+    chapter_4: () => "事件頻度異常。已切換多工核心，請勿插隊。",
+    chapter_5: () => "終焉增幅已啟動。我的幽默模組判定：這很不妙。",
+    relic: () => "遺物同調成功。文明毀滅率下降 0.4%，值得慶祝 0.4 秒。",
+    worldEvent: ({ eventSummary }) => `事件資料：${eventSummary}。結論：請提高輸出，不要提高音量。`,
+    mission: () => "任務完成。獎勵入帳。情緒建議：短暫微笑後繼續戰鬥。",
+    storyNode: ({ arcTitle }) => `劇情節點「${arcTitle}」已載入。請選擇你偏好的宇宙分支。`,
+    storyDecision: ({ faction }) => `決策提交。陣營「${faction}」權重提升。後果開始計算。`,
+  },
 };
 
 const ACHIEVEMENT_DEFS = [
@@ -946,6 +1205,8 @@ function createState() {
     runCores: 0,
     totalCores,
     profile,
+    leaderboard: loadLeaderboard(),
+    runHistory: loadRunHistory(),
     availableWeapons,
     chapter: { ...selectedChapter, index: CHAPTER_MAP.findIndex((c) => c.id === selectedChapter.id) },
     storyCursor: profile.storyCursor,
@@ -1004,6 +1265,7 @@ function createState() {
       clutchKills: 0,
       funnyMoments: 0,
     },
+    gameOverSummary: "",
     player: createBasePlayer(totalCores, profile),
   };
 }
@@ -1061,6 +1323,25 @@ function createBasePlayer(totalCores, profile) {
     igniteTimer: 0,
     igniteCd: 14,
     supportPower: 1,
+    supportCooldownScale: 1,
+    switchTacticsLevel: 0,
+    switchBuffTimer: 0,
+    dashPulseLevel: 0,
+    counterBurstLevel: 0,
+    magnetRadius: 0,
+    pulseEmitterLevel: 0,
+    pulseEmitterCd: 4.5,
+    emergencyProtocol: 0,
+    emergencyCd: 0,
+    counterBurstCd: 0,
+    supplyPrinterLevel: 0,
+    supplyPrinterCounter: 0,
+    pickupPulseLevel: 0,
+    supportDroneLevel: 0,
+    supportDroneTimer: 0,
+    phaseSplitterLevel: 0,
+    phaseSplitterCounter: 0,
+    echoMatrix: 0,
   };
 
   const metaLevel = Math.min(30, Math.floor(totalCores / 360));
@@ -1133,9 +1414,12 @@ function strategicBackAction() {
 
 function showCommandHub() {
   const narrative = getNarrativeLine(state.loreCursor + state.totalCores + state.wave).slice(0, 76);
+  const currentName = state.profile.playerName || "無名駕駛";
+  const top = state.leaderboard[0];
+  const topText = top ? `#1 ${top.name}｜${top.score} 分（W${top.wave}）` : "尚無紀錄";
   showOverlay(
     "裂隙奔襲：戰略中樞",
-    `永久星核：${state.totalCores}\n研究等級：${state.metaLevel}\n當前章節：${state.chapter.name}\n檔案脈絡：${narrative}`,
+    `玩家：${currentName}\n永久星核：${state.totalCores}\n研究等級：${state.metaLevel}\n當前章節：${state.chapter.name}\n本機榜首：${topText}\n檔案脈絡：${narrative}`,
     [
       {
         label: "開始戰役（職業部署）",
@@ -1160,6 +1444,10 @@ function showCommandHub() {
       {
         label: "編年史檔案庫（劇情脈絡）",
         onClick: showCodexOverlay,
+      },
+      {
+        label: "玩家檔案與排行榜",
+        onClick: showPilotArchiveOverlay,
       },
     ],
   );
@@ -1242,25 +1530,48 @@ function unlockTechNode(node) {
   showTechTreeOverlay();
 }
 
+function getFactionNpc(faction, rng = Math.random) {
+  const pool = FACTION_NPCS[faction];
+  if (pool && pool.length > 0) {
+    return pickRandom(pool, rng);
+  }
+  return pickRandom(NPC_PROFILES, rng);
+}
+
+function getNpcById(id) {
+  return NPC_BY_ID[id] || NPC_PROFILES[0];
+}
+
+function getNpcDialogue(npc, topic, context = {}) {
+  const script = NPC_DIALOGUE_BANK[npc.id];
+  const raw = script?.[topic] || script?.comm;
+  if (typeof raw === "function") {
+    return raw(context);
+  }
+  if (typeof raw === "string") {
+    return raw;
+  }
+  return "訊號清晰，維持火力與機動。";
+}
+
+function queueNpcDialogue(npc, topic, context = {}, duration = 4.2) {
+  queueDialogue(npc.name, getNpcDialogue(npc, topic, context), duration);
+}
+
 function showFactionCommOverlay() {
-  const actions = Object.keys(FACTION_NPCS).map((faction) => {
-    const npc = pickRandom(FACTION_NPCS[faction], state.rng);
-    const rep = state.factionRep[faction] || 0;
+  const actions = NPC_PROFILES.map((npc) => {
+    const rep = state.factionRep[npc.faction] || 0;
     return {
-      label: `連線 ${faction}（聲望 ${rep}）｜${npc.name}【${npc.tone}】`,
+      label: `連線 ${npc.name}｜${npc.tone}｜${npc.arcTitle}（${npc.faction} 聲望 ${rep}）`,
       className: "upgrade-btn",
       onClick: () => {
-        queueDialogue(
-          npc.name,
-          `${faction}通訊：你在${state.chapter.name}的決策將改寫戰線，保持壓力，別讓裂隙喘息。`,
-          4.8,
-        );
+        queueNpcDialogue(npc, "comm", { chapterName: state.chapter.name }, 4.9);
         showFactionCommOverlay();
       },
     };
   });
   actions.push(strategicBackAction());
-  showOverlay("NPC 陣營通訊", "選擇一個陣營開啟即時通訊。", actions);
+  showOverlay("NPC 陣營通訊", "僅保留 5 位核心 NPC。每位都有獨立語氣與專屬劇情線。", actions);
 }
 
 function showClassSelectionOverlay() {
@@ -1341,6 +1652,42 @@ function showCodexOverlay() {
       {
         ...strategicBackAction(),
       },
+    ],
+  );
+}
+
+function showPilotArchiveOverlay() {
+  const topBoard = state.leaderboard
+    .slice(0, 8)
+    .map((entry, index) => `#${index + 1} ${entry.name}｜${entry.score} 分｜W${entry.wave}｜${entry.chapterCode}`)
+    .join("\n");
+  const recentRuns = state.runHistory
+    .slice(0, 8)
+    .map((record) => `${record.name}｜${record.score} 分｜W${record.wave}｜${record.chapterCode}`)
+    .join("\n");
+  const backAction = state.phase === "gameover"
+    ? { label: "返回結算", onClick: showGameOverOverlay }
+    : strategicBackAction();
+
+  showOverlay(
+    "玩家檔案與本機排行榜",
+    `當前玩家：${state.profile.playerName}\n本機排行榜：\n${topBoard || "暫無資料"}\n\n最近戰績：\n${recentRuns || "暫無資料"}`,
+    [
+      {
+        label: "更改玩家名稱",
+        onClick: renameCurrentPlayer,
+      },
+      {
+        label: "清空本機排行榜",
+        className: "upgrade-btn",
+        onClick: clearLeaderboardData,
+      },
+      {
+        label: "清空本機戰績紀錄",
+        className: "upgrade-btn",
+        onClick: clearRunHistoryData,
+      },
+      backAction,
     ],
   );
 }
@@ -1434,10 +1781,11 @@ function startRun(classId) {
     pushFeed(`研究等級加成生效：Lv.${state.metaLevel}`, "#ffdd8a");
   }
 
-  const npc = pickRandom(FACTION_NPCS[chapter.npcFaction], state.rng);
-  queueDialogue(
-    npc.name,
-    `${chapter.npcFaction}前線回報：${chapter.desc}，你已獲得戰場授權，立即推進。`,
+  const npc = getFactionNpc(chapter.npcFaction, state.rng);
+  queueNpcDialogue(
+    npc,
+    "deployment",
+    { chapterName: chapter.name, chapterDesc: chapter.desc },
     5.2,
   );
 }
@@ -1474,7 +1822,8 @@ function buildWave(wave, rng) {
   const queue = [];
   const threatScale = 1 + (state.directorThreat - 1) * 0.8;
   const chapterScale = state.chapter?.spawnFactor || 1;
-  const baseCount = Math.floor((7 + wave * 2) * threatScale * chapterScale);
+  const lateWaveScale = wave >= 10 ? 1 + (wave - 9) * 0.035 : 1;
+  const baseCount = Math.floor((7 + wave * 2.2) * threatScale * chapterScale * lateWaveScale);
   for (let i = 0; i < baseCount; i += 1) {
     queue.push(rollEnemyType(wave, rng));
   }
@@ -1487,6 +1836,18 @@ function buildWave(wave, rng) {
   }
   if (wave % 5 === 0) {
     queue.push("boss");
+  }
+  if (wave >= 8 && wave % 2 === 0) {
+    queue.push("assassin");
+  }
+  if (wave >= 12 && wave % 3 === 0) {
+    queue.push("tank", "splitter");
+  }
+  if (wave >= 16) {
+    queue.push("assassin", "assassin");
+    if (wave % 4 === 0) {
+      queue.push("boss");
+    }
   }
 
   shuffle(queue, rng);
@@ -1505,19 +1866,46 @@ function rollEnemyType(wave, rng) {
     if (r < 0.92) return "splitter";
     return "assassin";
   }
+  if (wave < 10) {
+    if (r < 0.3) return "chaser";
+    if (r < 0.54) return "shooter";
+    if (r < 0.76) return "splitter";
+    if (r < 0.9) return "assassin";
+    return "tank";
+  }
+  if (wave < 16) {
+    if (r < 0.2) return "chaser";
+    if (r < 0.41) return "shooter";
+    if (r < 0.67) return "splitter";
+    if (r < 0.86) return "assassin";
+    return "tank";
+  }
+  if (wave < 22) {
+    if (r < 0.14) return "chaser";
+    if (r < 0.32) return "shooter";
+    if (r < 0.58) return "splitter";
+    if (r < 0.83) return "assassin";
+    return "tank";
+  }
 
-  if (r < 0.3) return "chaser";
-  if (r < 0.54) return "shooter";
-  if (r < 0.76) return "splitter";
-  if (r < 0.9) return "assassin";
+  if (r < 0.1) return "chaser";
+  if (r < 0.27) return "shooter";
+  if (r < 0.53) return "splitter";
+  if (r < 0.79) return "assassin";
   return "tank";
 }
 
 function makeEnemy(activeState, type) {
   const t = ENEMY_TEMPLATES[type];
   const spawn = randomEdgeSpawn(activeState.rng);
-  const hpScale = (1 + activeState.wave * 0.13) * (activeState.chapter?.enemyHpFactor || 1) * activeState.directorThreat;
-  const speedScale = 1 + activeState.wave * 0.014 + (activeState.directorThreat - 1) * 0.08;
+  const lateHpScale = activeState.wave > 12 ? 1 + (activeState.wave - 12) * 0.045 : 1;
+  const hpScale = (1 + activeState.wave * 0.13) * lateHpScale
+    * (activeState.chapter?.enemyHpFactor || 1)
+    * activeState.directorThreat;
+  const speedScale = 1
+    + activeState.wave * 0.014
+    + Math.max(0, activeState.wave - 14) * 0.007
+    + (activeState.directorThreat - 1) * 0.08;
 
   const enemy = {
     type,
@@ -1529,7 +1917,7 @@ function makeEnemy(activeState, type) {
     speed: t.speed * speedScale,
     hp: t.hp * hpScale,
     maxHp: t.hp * hpScale,
-    damage: t.damage * (1 + activeState.wave * 0.028),
+    damage: t.damage * (1 + activeState.wave * 0.03 + Math.max(0, activeState.wave - 12) * 0.014),
     score: t.score,
     xp: t.xp,
     color: t.color,
@@ -1549,7 +1937,7 @@ function makeEnemy(activeState, type) {
   };
 
   if (type !== "boss" && type !== "mini") {
-    const eliteChance = clamp(0.05 + activeState.wave * 0.013, 0, 0.34);
+    const eliteChance = clamp(0.05 + activeState.wave * 0.013 + Math.max(0, activeState.wave - 10) * 0.005, 0, 0.5);
     if (activeState.rng() < eliteChance) {
       const modId = pickRandom(Object.keys(ELITE_MODS), activeState.rng);
       const mod = ELITE_MODS[modId];
@@ -1600,7 +1988,19 @@ function update(dt) {
   player.droneCd = Math.max(0, player.droneCd - dt);
   player.igniteCd = Math.max(0, player.igniteCd - dt);
   player.igniteTimer = Math.max(0, player.igniteTimer - dt);
+  player.switchBuffTimer = Math.max(0, player.switchBuffTimer - dt);
+  player.counterBurstCd = Math.max(0, player.counterBurstCd - dt);
+  player.emergencyCd = Math.max(0, player.emergencyCd - dt);
+  player.supportDroneTimer = Math.max(0, player.supportDroneTimer - dt);
   state.supportCd = Math.max(0, state.supportCd - dt);
+
+  if (player.pulseEmitterLevel > 0) {
+    player.pulseEmitterCd -= dt;
+    if (player.pulseEmitterCd <= 0) {
+      triggerPulseEmitter(state);
+      player.pulseEmitterCd = Math.max(1.1, 4.2 - player.pulseEmitterLevel * 0.46);
+    }
+  }
 
   state.ultimateFlash = Math.max(0, state.ultimateFlash - dt * 2.5);
 
@@ -1743,25 +2143,17 @@ function updatePlayerActions(activeState) {
   const slots = activeState.availableWeapons.length > 0 ? activeState.availableWeapons : DEFAULT_UNLOCKED_WEAPONS;
   for (let i = 0; i < Math.min(slots.length, 9); i += 1) {
     if (consumePress(String(i + 1))) {
-      player.weapon = slots[i];
-      state.profile.favoriteWeapon = player.weapon;
-      persistProfile();
+      setPlayerWeapon(activeState, slots[i]);
     }
   }
   if (consumePress("0") && slots[9]) {
-    player.weapon = slots[9];
-    state.profile.favoriteWeapon = player.weapon;
-    persistProfile();
+    setPlayerWeapon(activeState, slots[9]);
   }
   if (consumePress("[")) {
-    player.weapon = cycleOwnedWeapon(slots, player.weapon, -1);
-    state.profile.favoriteWeapon = player.weapon;
-    persistProfile();
+    setPlayerWeapon(activeState, cycleOwnedWeapon(slots, player.weapon, -1));
   }
   if (consumePress("]")) {
-    player.weapon = cycleOwnedWeapon(slots, player.weapon, 1);
-    state.profile.favoriteWeapon = player.weapon;
-    persistProfile();
+    setPlayerWeapon(activeState, cycleOwnedWeapon(slots, player.weapon, 1));
   }
 
   const firing = input.mouse.down || isKeyHeld(" ") || isKeyHeld("space") || input.touch.fire;
@@ -1769,12 +2161,14 @@ function updatePlayerActions(activeState) {
     firePlayerWeapon(activeState, player.facing);
   }
 
-  if (player.droneLevel > 0 && player.droneCd <= 0 && activeState.enemies.length > 0) {
+  const extraDroneLevel = player.supportDroneTimer > 0 ? player.supportDroneLevel : 0;
+  const effectiveDroneLevel = player.droneLevel + extraDroneLevel;
+  if (effectiveDroneLevel > 0 && player.droneCd <= 0 && activeState.enemies.length > 0) {
     const target = findNearestEnemy(activeState, player.x, player.y);
     if (target) {
       const angle = angleBetween(player.x, player.y, target.x, target.y);
-      fireDrone(activeState, angle);
-      player.droneCd = Math.max(0.48, 1.1 - player.droneLevel * 0.1);
+      fireDrone(activeState, angle, effectiveDroneLevel);
+      player.droneCd = Math.max(0.34, 1.1 - effectiveDroneLevel * 0.1);
     }
   }
 }
@@ -1811,6 +2205,10 @@ function tryDash(activeState) {
 
   kickCamera(activeState, 1.3);
   emitHitSpark(activeState, player.x, player.y, "#8ef5ff", 14);
+
+  if (player.dashPulseLevel > 0) {
+    triggerDashPulse(activeState);
+  }
 }
 
 function tryBomb(activeState) {
@@ -1885,7 +2283,7 @@ function trySupportStrike(activeState) {
   }
 
   activeState.supportCharges -= 1;
-  activeState.supportCd = 18;
+  activeState.supportCd = 18 * activeState.player.supportCooldownScale;
 
   const target = findNearestEnemy(activeState, activeState.player.x, activeState.player.y);
   const tx = target ? target.x : activeState.player.x + Math.cos(activeState.player.facing) * 140;
@@ -1902,38 +2300,51 @@ function trySupportStrike(activeState) {
   }
 
   const chapterFaction = activeState.chapter?.npcFaction || "曙光議會";
-  const npc = pickRandom(FACTION_NPCS[chapterFaction], activeState.rng);
-  queueDialogue(npc.name, "支援軌道打擊已到位，窗口只有 6 秒，立刻推進。", 3.8);
+  const npc = getFactionNpc(chapterFaction, activeState.rng);
+  queueNpcDialogue(npc, "support", { chapterName: activeState.chapter?.name }, 3.8);
+  if (activeState.player.supportDroneLevel > 0) {
+    activeState.player.supportDroneTimer = Math.max(
+      activeState.player.supportDroneTimer,
+      8 + activeState.player.supportDroneLevel * 1.6,
+    );
+    pushFeed("支援聯動：臨時僚機進場", "#b8ffe6");
+  }
   pushFeed("支援指令：軌道打擊", "#ffd4a2");
 }
 
 function firePlayerWeapon(activeState, angle) {
   const player = activeState.player;
   const weapon = WEAPONS[player.weapon];
+  const switchOverclock = player.switchBuffTimer > 0 && player.switchTacticsLevel > 0;
+  const switchDamageBoost = switchOverclock ? 1 + player.switchTacticsLevel * 0.13 : 1;
+  const switchRateBoost = switchOverclock ? Math.max(0.58, 1 - player.switchTacticsLevel * 0.07) : 1;
+  const switchExtraShots = switchOverclock ? Math.min(2, Math.floor(player.switchTacticsLevel / 2)) : 0;
+  const shotCount = weapon.count + switchExtraShots;
+  const bonusEcho = weapon.type === "echo" ? 0 : player.echoMatrix;
 
-  for (let i = 0; i < weapon.count; i += 1) {
-    const spread = weapon.count === 1
+  for (let i = 0; i < shotCount; i += 1) {
+    const spread = shotCount === 1
       ? randRange(activeState.rng, -weapon.spread, weapon.spread)
-      : mapRange(i, 0, weapon.count - 1, -weapon.spread, weapon.spread);
+      : mapRange(i, 0, shotCount - 1, -weapon.spread, weapon.spread);
 
     const a = angle + spread;
     const critRoll = activeState.rng();
     const isCrit = critRoll < player.critChance;
 
     const damageBoost = player.igniteTimer > 0 ? 1.35 : 1;
-    const baseDamage = weapon.damage * player.damageMultiplier * damageBoost;
+    const baseDamage = weapon.damage * player.damageMultiplier * damageBoost * switchDamageBoost;
     const damage = isCrit ? baseDamage * player.critMultiplier : baseDamage;
     const explosiveRadius = weapon.type === "explosive" ? 108 : 0;
     const burnTime = weapon.type === "burn" ? 2.4 : 0;
     const gravityField = weapon.type === "gravity" ? 1 : 0;
-    const echoBounces = weapon.type === "echo" ? 1 : 0;
+    const echoBounces = (weapon.type === "echo" ? 1 : 0) + bonusEcho;
 
     activeState.bullets.push({
       x: player.x + Math.cos(a) * (player.r + 4),
       y: player.y + Math.sin(a) * (player.r + 4),
       vx: Math.cos(a) * weapon.speed,
       vy: Math.sin(a) * weapon.speed,
-      r: weapon.count > 1 ? 3 : 4,
+      r: shotCount > 1 ? 3 : 4,
       ttl: 1.25,
       damage,
       pierce: weapon.pierce,
@@ -1947,14 +2358,42 @@ function firePlayerWeapon(activeState, angle) {
     });
   }
 
+  if (player.phaseSplitterLevel > 0) {
+    player.phaseSplitterCounter += 1;
+    const triggerGap = Math.max(3, 10 - player.phaseSplitterLevel * 2);
+    if (player.phaseSplitterCounter >= triggerGap) {
+      player.phaseSplitterCounter = 0;
+      const spearDamage = (36 + player.phaseSplitterLevel * 12) * player.damageMultiplier * (player.igniteTimer > 0 ? 1.25 : 1);
+      activeState.bullets.push({
+        x: player.x + Math.cos(angle) * (player.r + 8),
+        y: player.y + Math.sin(angle) * (player.r + 8),
+        vx: Math.cos(angle) * 940,
+        vy: Math.sin(angle) * 940,
+        r: 5,
+        ttl: 1.45,
+        damage: spearDamage,
+        pierce: 4 + player.phaseSplitterLevel,
+        color: "#fff0ad",
+        type: "pierce",
+        chainLeft: 0,
+        explosiveRadius: 0,
+        burnTime: 0,
+        gravityField: 0,
+        echoBounces: 0,
+      });
+      emitHitSpark(activeState, player.x, player.y, "#fff0ad", 8);
+    }
+  }
+
   emitHitSpark(activeState, player.x, player.y, weapon.color, 4);
   const igniteRateBoost = player.igniteTimer > 0 ? 0.84 : 1;
-  player.fireCd = weapon.fireRate * player.fireRateMultiplier * igniteRateBoost;
+  player.fireCd = weapon.fireRate * player.fireRateMultiplier * igniteRateBoost * switchRateBoost;
 }
 
-function fireDrone(activeState, angle) {
+function fireDrone(activeState, angle, levelOverride = null) {
   const player = activeState.player;
-  const damage = (8 + player.droneLevel * 3) * player.damageMultiplier;
+  const droneLevel = levelOverride ?? player.droneLevel;
+  const damage = (8 + droneLevel * 3) * player.damageMultiplier;
 
   activeState.bullets.push({
     x: player.x - Math.cos(angle) * 8,
@@ -2314,6 +2753,76 @@ function applyExplosionDamage(activeState, x, y, radius, damage) {
   emitRing(activeState, x, y, "#ffb27b");
 }
 
+function triggerDashPulse(activeState) {
+  const player = activeState.player;
+  const radius = 84 + player.dashPulseLevel * 24;
+  const damage = (34 + activeState.wave * 4 + player.dashPulseLevel * 16) * player.damageMultiplier;
+  applyExplosionDamage(activeState, player.x, player.y, radius, damage);
+  for (let i = activeState.enemyBullets.length - 1; i >= 0; i -= 1) {
+    const b = activeState.enemyBullets[i];
+    if (Math.hypot(b.x - player.x, b.y - player.y) <= radius) {
+      activeState.enemyBullets.splice(i, 1);
+    }
+  }
+  emitHitSpark(activeState, player.x, player.y, "#8ef5ff", 10);
+}
+
+function triggerCounterBurst(activeState) {
+  const player = activeState.player;
+  player.counterBurstCd = Math.max(0.6, 2.2 - player.counterBurstLevel * 0.22);
+  const radius = 72 + player.counterBurstLevel * 22;
+  const damage = (30 + player.counterBurstLevel * 18 + activeState.wave * 2.5) * player.damageMultiplier;
+  applyExplosionDamage(activeState, player.x, player.y, radius, damage);
+  for (let i = activeState.enemyBullets.length - 1; i >= 0; i -= 1) {
+    const b = activeState.enemyBullets[i];
+    if (Math.hypot(b.x - player.x, b.y - player.y) <= radius) {
+      activeState.enemyBullets.splice(i, 1);
+    }
+  }
+  pushFeed("反擊晶格：脈衝回擊", "#f6c7ff");
+}
+
+function triggerPulseEmitter(activeState) {
+  const player = activeState.player;
+  const radius = 66 + player.pulseEmitterLevel * 20;
+  const damage = (24 + player.pulseEmitterLevel * 12 + activeState.wave * 1.8) * player.damageMultiplier;
+  applyExplosionDamage(activeState, player.x, player.y, radius, damage);
+  emitHitSpark(activeState, player.x, player.y, "#8ee8ff", 8);
+}
+
+function triggerPickupPulse(activeState) {
+  const player = activeState.player;
+  const radius = 58 + player.pickupPulseLevel * 14;
+  const damage = (14 + player.pickupPulseLevel * 8) * player.damageMultiplier;
+  applyExplosionDamage(activeState, player.x, player.y, radius, damage);
+  for (let i = activeState.enemyBullets.length - 1; i >= 0; i -= 1) {
+    const b = activeState.enemyBullets[i];
+    if (Math.hypot(b.x - player.x, b.y - player.y) <= radius) {
+      activeState.enemyBullets.splice(i, 1);
+    }
+  }
+}
+
+function triggerEmergencyProtocol(activeState) {
+  const player = activeState.player;
+  const heal = player.maxHp * (0.16 + player.emergencyProtocol * 0.08);
+  const shield = player.maxShield * (0.26 + player.emergencyProtocol * 0.08);
+  player.hp = Math.max(player.hp, 1);
+  player.hp = Math.min(player.maxHp, player.hp + heal);
+  player.shield = Math.min(player.maxShield, player.shield + shield);
+  player.energy = Math.min(player.maxEnergy, player.energy + 30);
+  player.invuln = Math.max(player.invuln, 1 + player.emergencyProtocol * 0.25);
+  player.emergencyCd = Math.max(20, 38 - player.emergencyProtocol * 4);
+  for (let i = activeState.enemyBullets.length - 1; i >= 0; i -= 1) {
+    const b = activeState.enemyBullets[i];
+    if (Math.hypot(b.x - player.x, b.y - player.y) <= 130) {
+      activeState.enemyBullets.splice(i, 1);
+    }
+  }
+  emitRing(activeState, player.x, player.y, "#9cc7ff");
+  pushFeed("緊急協議啟動：生存系統接管", "#b2d7ff");
+}
+
 function updateEnemyBullets(activeState, dt) {
   const player = activeState.player;
 
@@ -2345,6 +2854,8 @@ function updateEnemyBullets(activeState, dt) {
 
 function updatePickups(activeState, dt) {
   const player = activeState.player;
+  const magnetRange = 96 + player.magnetRadius;
+  const collectBonus = player.magnetRadius * 0.18;
 
   for (let i = activeState.pickups.length - 1; i >= 0; i -= 1) {
     const item = activeState.pickups[i];
@@ -2364,7 +2875,16 @@ function updatePickups(activeState, dt) {
       continue;
     }
 
-    if (circleHit(player.x, player.y, player.r, item.x, item.y, item.r + 2)) {
+    const dx = player.x - item.x;
+    const dy = player.y - item.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    if (dist <= magnetRange) {
+      const pull = (1 - clamp(dist / magnetRange, 0, 1)) * (180 + player.magnetRadius * 1.8);
+      item.x += (dx / dist) * pull * dt;
+      item.y += (dy / dist) * pull * dt;
+    }
+
+    if (circleHit(player.x, player.y, player.r, item.x, item.y, item.r + 2 + collectBonus)) {
       applyPickup(activeState, item.type);
       emitHitSpark(activeState, item.x, item.y, item.color, 14);
       activeState.pickups.splice(i, 1);
@@ -2509,7 +3029,7 @@ function updateChapterEvents(activeState, dt) {
     for (let i = 0; i < 2; i += 1) {
       spawnAnomaly(activeState);
     }
-    queueDialogue("米亞觀測員", "鏡城重力透鏡開啟，異常體數量翻倍。", 4.1);
+    queueNpcDialogue(getNpcById("mia"), "chapter_2", { chapterName: activeState.chapter?.name }, 4.1);
     pushFeed("章節事件：鏡像透鏡", "#a7cbff");
     return;
   }
@@ -2517,14 +3037,14 @@ function updateChapterEvents(activeState, dt) {
   if (chapterId === "chapter_3") {
     activeState.enemies.push(makeEnemy(activeState, "assassin"));
     activeState.enemies.push(makeEnemy(activeState, "assassin"));
-    queueDialogue("K-7 工程長", "黑井前線突襲隊進場，保持機動。", 4.1);
+    queueNpcDialogue(getNpcById("ivan"), "chapter_3", { chapterName: activeState.chapter?.name }, 4.1);
     pushFeed("章節事件：刺殺編隊", "#f3a5ff");
     return;
   }
 
   if (chapterId === "chapter_4") {
     activeState.worldEventCooldown = Math.min(activeState.worldEventCooldown, 2.2);
-    queueDialogue("赫敏情報官", "潮汐穹頂的事件密度升高，隨時準備轉場。", 4);
+    queueNpcDialogue(getNpcById("hermin"), "chapter_4", { chapterName: activeState.chapter?.name }, 4);
     pushFeed("章節事件：脈衝風暴", "#ffd3aa");
     return;
   }
@@ -2532,7 +3052,7 @@ function updateChapterEvents(activeState, dt) {
   if (chapterId === "chapter_5") {
     activeState.directorThreat = clamp(activeState.directorThreat + 0.12, 1, 3.2);
     activeState.enemies.push(makeEnemy(activeState, "tank"));
-    queueDialogue("雷奧執行官", "終焉穹環增幅啟動，威脅等級提升。", 4.4);
+    queueNpcDialogue(getNpcById("k7"), "chapter_5", { chapterName: activeState.chapter?.name }, 4.4);
     pushFeed("章節事件：終焉增幅", "#ffbfbf");
     return;
   }
@@ -2560,7 +3080,7 @@ function updateRelicEvents(activeState, dt) {
     text: "你在戰場中心發現古代遺物核心，選擇一件帶走。",
     options: options.map((relic) => ({
       title: relic.name,
-      text: `${relic.lore}｜屬性 ${relic.bonusKey} +${relic.bonusValue}`,
+      text: `${relic.lore}｜屬性 ${RELIC_BONUS_LABELS[relic.bonusKey] || "未知協定"} +${relic.bonusValue}`,
       apply(s) {
         applyRelicBonus(s, relic);
       },
@@ -2568,8 +3088,8 @@ function updateRelicEvents(activeState, dt) {
   });
 
   activeState.stats.relicEvents += 1;
-  const npc = pickRandom(FACTION_NPCS[activeState.chapter?.npcFaction || "曙光議會"], activeState.rng);
-  queueDialogue(npc.name, "掃描到遺物信號，務必在敵潮前完成取樣。", 4.1);
+  const npc = getFactionNpc(activeState.chapter?.npcFaction || "曙光議會", activeState.rng);
+  queueNpcDialogue(npc, "relic", { chapterName: activeState.chapter?.name }, 4.1);
 }
 
 function applyRelicBonus(activeState, relic) {
@@ -2590,6 +3110,8 @@ function applyRelicBonus(activeState, relic) {
   else if (key === "bonus_9") p.damageResist = clamp(p.damageResist + value * 0.01, 0, 0.7);
   else if (key === "bonus_10") {
     activeState.supportCharges += Math.max(1, Math.floor(value / 2));
+  } else if (key === "bonus_11") {
+    p.arcChains += Math.max(1, Math.floor(value / 2));
   } else {
     p.arcChains += Math.max(1, Math.floor(value / 3));
   }
@@ -2605,18 +3127,19 @@ function updateThreatDirector(activeState, dt) {
   const p = activeState.player;
   const hpRatio = p.hp / Math.max(1, p.maxHp);
   const comboFactor = 1 + Math.min(activeState.combo * 0.01, 0.45);
-  const waveFactor = 1 + activeState.wave * 0.01;
+  const waveFactor = 1 + activeState.wave * 0.012 + Math.max(0, activeState.wave - 12) * 0.006;
   const hpFactor = hpRatio < 0.35 ? 0.94 : 1.02;
   const chapterBase = activeState.chapter?.directorBase || 1;
 
-  const target = clamp(chapterBase * comboFactor * waveFactor * hpFactor, 0.9, 3.2);
+  const target = clamp(chapterBase * comboFactor * waveFactor * hpFactor, 0.9, 3.6);
   activeState.directorThreat += (target - activeState.directorThreat) * dt * 0.8;
-  activeState.directorThreat = clamp(activeState.directorThreat, 0.9, 3.2);
+  activeState.directorThreat = clamp(activeState.directorThreat, 0.9, 3.6);
 
   activeState.eliteSurgeTimer -= dt;
   if (activeState.eliteSurgeTimer <= 0 && activeState.directorThreat >= 1.8) {
-    activeState.eliteSurgeTimer = randRange(activeState.rng, 16, 24);
-    const surgeCount = 1 + Math.floor(activeState.directorThreat);
+    const highWave = activeState.wave >= 15;
+    activeState.eliteSurgeTimer = highWave ? randRange(activeState.rng, 11, 18) : randRange(activeState.rng, 16, 24);
+    const surgeCount = (highWave ? 2 : 1) + Math.floor(activeState.directorThreat);
     for (let i = 0; i < surgeCount; i += 1) {
       const e = makeEnemy(activeState, pickRandom(["assassin", "splitter", "tank"], activeState.rng));
       e.elite = { id: "surge", label: "導演增幅", color: "#ffd6a7" };
@@ -2703,8 +3226,8 @@ function startWorldEvent(activeState) {
 
   pushFeed(`世界事件觸發：${picked.label}`, "#ffcb8a");
   pushFeed(`事件脈絡：${eventSummary}`, "#e8c9ff");
-  const npc = pickRandom(FACTION_NPCS[activeState.chapter?.npcFaction || "曙光議會"], activeState.rng);
-  queueDialogue(npc.name, `突發事件通報：${eventSummary}，注意場面正在失控。`, 4.4);
+  const npc = getFactionNpc(activeState.chapter?.npcFaction || "曙光議會", activeState.rng);
+  queueNpcDialogue(npc, "worldEvent", { eventSummary, chapterName: activeState.chapter?.name }, 4.4);
 }
 
 function updateMission(activeState, dt) {
@@ -2784,8 +3307,8 @@ function completeMission(activeState, mission) {
   activeState.stats.missions += 1;
   pushFeed(`任務完成：${mission.title}`, "#8cffb7");
   pushFeed(`合約後記：${getNarrativeLine(activeState.loreCursor + activeState.stats.missions * 3)}`, "#d8ccff");
-  const npc = pickRandom(FACTION_NPCS[activeState.chapter?.npcFaction || "深空行會"], activeState.rng);
-  queueDialogue(npc.name, `合約回報完成。獎勵已入帳，下一波更兇。`, 3.8);
+  const npc = getFactionNpc(activeState.chapter?.npcFaction || "深空行會", activeState.rng);
+  queueNpcDialogue(npc, "mission", { chapterName: activeState.chapter?.name }, 3.8);
 
   activeState.mission = null;
   activeState.missionCooldown = 6;
@@ -2836,6 +3359,9 @@ function killEnemy(activeState, enemy) {
   }
 
   activeState.stats.kills += 1;
+  if (p.hp / Math.max(1, p.maxHp) <= 0.2) {
+    activeState.stats.clutchKills += 1;
+  }
 
   const baseCore = enemy.type === "boss" ? 38 : enemy.elite ? 7 : 3;
   activeState.runCores += Math.round(baseCore * p.coreMultiplier);
@@ -2882,6 +3408,17 @@ function killEnemy(activeState, enemy) {
     spawnPickup(activeState, enemy.x, enemy.y, type);
   }
 
+  if (p.supplyPrinterLevel > 0) {
+    p.supplyPrinterCounter += 1;
+    const printThreshold = Math.max(6, 15 - p.supplyPrinterLevel * 2);
+    if (p.supplyPrinterCounter >= printThreshold) {
+      p.supplyPrinterCounter = 0;
+      const printedType = pickRandom(["health", "energy", "bomb", "shield", "overdrive"], activeState.rng);
+      spawnPickup(activeState, enemy.x, enemy.y, printedType);
+      pushFeed("補給列印機：已投放額外補給", "#b5ffe8");
+    }
+  }
+
   if (activeState.score > activeState.highScore) {
     activeState.highScore = activeState.score;
   }
@@ -2925,8 +3462,8 @@ function onWaveCleared() {
 
   const arc = STORY_ARCS[state.storyCursor % STORY_ARCS.length];
   if (arc && state.wave % 2 === 0) {
-    const factionNpc = pickRandom(FACTION_NPCS[state.chapter?.npcFaction || "曙光議會"], state.rng);
-    queueDialogue(factionNpc.name, `劇情節點已開啟：${arc.title}，你的抉擇會永久改寫前線。`, 4.8);
+    const factionNpc = getFactionNpc(state.chapter?.npcFaction || "曙光議會", state.rng);
+    queueNpcDialogue(factionNpc, "storyNode", { arcTitle: arc.title, chapterName: state.chapter?.name }, 4.8);
     enqueueChoice({
       title: `劇情節點：${arc.title}`,
       text: `${arc.text}\n\nA. ${arc.optionA}\nB. ${arc.optionB}`,
@@ -2997,8 +3534,8 @@ function applyStoryEffect(activeState, effect) {
     "#b9ffd8",
   );
   activeState.stats.storyChoices += 1;
-  const npc = pickRandom(FACTION_NPCS[effect.faction || activeState.chapter?.npcFaction || "曙光議會"], activeState.rng);
-  queueDialogue(npc.name, `已接收你的決策。戰線已向「${effect.faction || "未知陣營"}」偏轉。`, 4.2);
+  const npc = getFactionNpc(effect.faction || activeState.chapter?.npcFaction || "曙光議會", activeState.rng);
+  queueNpcDialogue(npc, "storyDecision", { faction: effect.faction || "未知陣營" }, 4.2);
 }
 
 function enqueueChoice(choice) {
@@ -3058,11 +3595,18 @@ function damagePlayer(activeState, amount) {
 
   if (damage > 0) {
     player.hp -= damage;
+    if (player.counterBurstLevel > 0 && player.counterBurstCd <= 0) {
+      triggerCounterBurst(activeState);
+    }
   }
 
   player.invuln = 0.2;
   kickCamera(activeState, 1.1);
   emitHitSpark(activeState, player.x, player.y, "#ff7a94", 10);
+
+  if (player.emergencyProtocol > 0 && player.emergencyCd <= 0 && player.hp <= player.maxHp * 0.2) {
+    triggerEmergencyProtocol(activeState);
+  }
 
   if (player.hp <= 0) {
     if (player.revives > 0) {
@@ -3114,9 +3658,12 @@ function onGameOver() {
   saveNumber(STORAGE_KEYS.cores, state.totalCores);
   saveNumber(STORAGE_KEYS.bestWave, state.bestWave);
   persistProfile();
+  const rank = recordRunResult(state);
 
   const summary = [
+    `玩家：${state.profile.playerName}`,
     `最終分數：${Math.floor(state.score)}`,
+    rank > 0 ? `本機排行榜名次：#${rank}` : "本機排行榜名次：尚未上榜",
     `最高波次：${state.wave}`,
     `擊殺：${state.stats.kills}（精英 ${state.stats.eliteKills} / 首領 ${state.stats.bossKills}）`,
     `最高連段：${state.stats.highestCombo}`,
@@ -3127,7 +3674,16 @@ function onGameOver() {
     `永久星核總計：${state.totalCores}`,
   ].join("\n");
 
-  showOverlay("訊號中斷", summary, [
+  state.gameOverSummary = summary;
+  showGameOverOverlay();
+}
+
+function showGameOverOverlay() {
+  showOverlay("訊號中斷", state.gameOverSummary || "訊號中斷。", [
+    {
+      label: "查看排行榜",
+      onClick: showPilotArchiveOverlay,
+    },
     {
       label: "重新部署",
       onClick: restartGame,
@@ -3183,6 +3739,10 @@ function showPauseOverlay() {
       onClick: showCodexOverlay,
     },
     {
+      label: "玩家檔案與排行榜",
+      onClick: showPilotArchiveOverlay,
+    },
+    {
       label: "重開",
       onClick: restartGame,
     },
@@ -3221,31 +3781,37 @@ function applyPickup(activeState, type) {
   const p = activeState.player;
   activeState.stats.pickups += 1;
   onMissionProgress(activeState, "pickup", 1);
+  let feedLabel = "";
+  let feedColor = "#9af7ff";
 
   if (type === "health") {
     p.hp = Math.min(p.maxHp, p.hp + 30);
-    pushFeed("拾取：生命核心", "#ff9ab2");
-    return;
-  }
-  if (type === "energy") {
+    feedLabel = "拾取：生命核心";
+    feedColor = "#ff9ab2";
+  } else if (type === "energy") {
     p.energy = Math.min(p.maxEnergy, p.energy + 44);
-    pushFeed("拾取：能量核心", "#9af7ff");
-    return;
-  }
-  if (type === "bomb") {
+    feedLabel = "拾取：能量核心";
+    feedColor = "#9af7ff";
+  } else if (type === "bomb") {
     p.bombs = Math.min(p.maxBombs, p.bombs + 1);
-    pushFeed("拾取：炸彈補給", "#ffe8a4");
-    return;
-  }
-  if (type === "shield") {
+    feedLabel = "拾取：炸彈補給";
+    feedColor = "#ffe8a4";
+  } else if (type === "shield") {
     p.shield = Math.min(p.maxShield, p.shield + 36);
-    pushFeed("拾取：護盾晶片", "#a6c7ff");
-    return;
-  }
-  if (type === "overdrive") {
+    feedLabel = "拾取：護盾晶片";
+    feedColor = "#a6c7ff";
+  } else if (type === "overdrive") {
     p.igniteTimer = Math.max(p.igniteTimer, 6.5);
     p.ultCharge = clamp(p.ultCharge + 15, 0, 100);
-    pushFeed("拾取：超載晶核", "#e3a7ff");
+    feedLabel = "拾取：超載晶核";
+    feedColor = "#e3a7ff";
+  }
+
+  if (p.pickupPulseLevel > 0) {
+    triggerPickupPulse(activeState);
+  }
+  if (feedLabel) {
+    pushFeed(feedLabel, feedColor);
   }
 }
 
@@ -3854,6 +4420,10 @@ function bindEvents() {
     if (!event.repeat && key === "n") {
       openStrategicOverlay(showFactionCommOverlay);
     }
+
+    if (!event.repeat && key === "l") {
+      openStrategicOverlay(showPilotArchiveOverlay);
+    }
   });
 
   document.addEventListener("keyup", (event) => {
@@ -3934,6 +4504,10 @@ function bindEvents() {
         input.queuedUlt = true;
       } else if (key === "support") {
         input.justPressed.add("g");
+      } else if (key === "prevWeapon") {
+        input.justPressed.add("[");
+      } else if (key === "nextWeapon") {
+        input.justPressed.add("]");
       } else {
         input.touch[key] = true;
       }
@@ -3941,7 +4515,14 @@ function bindEvents() {
 
     const onUp = (event) => {
       event.preventDefault();
-      if (key !== "dash" && key !== "bomb" && key !== "ult" && key !== "support") {
+      if (
+        key !== "dash" &&
+        key !== "bomb" &&
+        key !== "ult" &&
+        key !== "support" &&
+        key !== "prevWeapon" &&
+        key !== "nextWeapon"
+      ) {
         input.touch[key] = false;
       }
     };
@@ -4045,6 +4626,27 @@ function cycleOwnedWeapon(slots, current, delta) {
   return slots[next];
 }
 
+function setPlayerWeapon(activeState, weaponId) {
+  if (!weaponId || !WEAPONS[weaponId]) {
+    return false;
+  }
+
+  const player = activeState.player;
+  if (player.weapon === weaponId) {
+    return false;
+  }
+
+  player.weapon = weaponId;
+  activeState.profile.favoriteWeapon = weaponId;
+  persistProfile();
+
+  if (player.switchTacticsLevel > 0) {
+    player.switchBuffTimer = Math.max(player.switchBuffTimer, 1.2 + player.switchTacticsLevel * 0.4);
+    emitHitSpark(activeState, player.x, player.y, "#d8f6ff", 9);
+  }
+  return true;
+}
+
 function toWorldPoint(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -4072,6 +4674,7 @@ function normalizeKey(key) {
 
 function defaultProfile(legacyCores) {
   return {
+    playerName: "新駕駛",
     cores: legacyCores,
     unlockedWeapons: [...DEFAULT_UNLOCKED_WEAPONS],
     favoriteWeapon: "pulse",
@@ -4122,6 +4725,7 @@ function loadProfile() {
     };
     merged.unlockedWeapons = [...new Set([...(merged.unlockedWeapons || []), ...DEFAULT_UNLOCKED_WEAPONS])]
       .filter((id) => WEAPONS[id]);
+    merged.playerName = sanitizePlayerName(merged.playerName);
     merged.storyCursor = Number.isFinite(merged.storyCursor) ? Math.max(0, Math.floor(merged.storyCursor)) : 0;
     merged.loreCursor = Number.isFinite(merged.loreCursor) ? Math.max(0, Math.floor(merged.loreCursor)) : 0;
     merged.factionRep = {
@@ -4167,6 +4771,149 @@ function saveProfile(profile) {
   } catch {
     // Ignore storage errors.
   }
+}
+
+function sanitizePlayerName(name) {
+  const text = String(name ?? "").replace(/\s+/gu, " ").trim();
+  if (!text) {
+    return "新駕駛";
+  }
+  return text.slice(0, 16);
+}
+
+function loadLeaderboard() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.leaderboard);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .map((entry) => ({
+        name: sanitizePlayerName(entry.name),
+        score: Number.isFinite(entry.score) ? Math.max(0, Math.floor(entry.score)) : 0,
+        wave: Number.isFinite(entry.wave) ? Math.max(1, Math.floor(entry.wave)) : 1,
+        chapterCode: typeof entry.chapterCode === "string" ? entry.chapterCode : "S-00",
+        timestamp: Number.isFinite(entry.timestamp) ? Math.floor(entry.timestamp) : Date.now(),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => (b.score - a.score) || (b.wave - a.wave) || (a.timestamp - b.timestamp))
+      .slice(0, MAX_LEADERBOARD_ENTRIES);
+  } catch {
+    return [];
+  }
+}
+
+function saveLeaderboard(entries) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.leaderboard, JSON.stringify(entries.slice(0, MAX_LEADERBOARD_ENTRIES)));
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function loadRunHistory() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.runHistory);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .map((entry) => ({
+        name: sanitizePlayerName(entry.name),
+        score: Number.isFinite(entry.score) ? Math.max(0, Math.floor(entry.score)) : 0,
+        wave: Number.isFinite(entry.wave) ? Math.max(1, Math.floor(entry.wave)) : 1,
+        chapterCode: typeof entry.chapterCode === "string" ? entry.chapterCode : "S-00",
+        timestamp: Number.isFinite(entry.timestamp) ? Math.floor(entry.timestamp) : Date.now(),
+      }))
+      .slice(0, MAX_RUN_HISTORY_ENTRIES);
+  } catch {
+    return [];
+  }
+}
+
+function saveRunHistory(entries) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.runHistory, JSON.stringify(entries.slice(0, MAX_RUN_HISTORY_ENTRIES)));
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function recordRunResult(activeState) {
+  const entry = {
+    name: sanitizePlayerName(activeState.profile.playerName),
+    score: Math.max(0, Math.floor(activeState.score)),
+    wave: Math.max(1, Math.floor(activeState.wave)),
+    chapterCode: activeState.chapter?.code || "S-00",
+    timestamp: Date.now(),
+  };
+
+  const history = [entry, ...(activeState.runHistory || [])].slice(0, MAX_RUN_HISTORY_ENTRIES);
+  activeState.runHistory = history;
+  saveRunHistory(history);
+
+  const byName = new Map();
+  for (const item of activeState.leaderboard || []) {
+    const current = byName.get(item.name);
+    if (
+      !current ||
+      item.score > current.score ||
+      (item.score === current.score && item.wave > current.wave)
+    ) {
+      byName.set(item.name, item);
+    }
+  }
+  const current = byName.get(entry.name);
+  if (
+    !current ||
+    entry.score > current.score ||
+    (entry.score === current.score && entry.wave > current.wave)
+  ) {
+    byName.set(entry.name, entry);
+  }
+
+  const board = [...byName.values()]
+    .sort((a, b) => (b.score - a.score) || (b.wave - a.wave) || (a.timestamp - b.timestamp))
+    .slice(0, MAX_LEADERBOARD_ENTRIES);
+  activeState.leaderboard = board;
+  saveLeaderboard(board);
+  return board.findIndex((item) => item.name === entry.name) + 1;
+}
+
+function renameCurrentPlayer() {
+  const next = window.prompt("輸入玩家名稱（最多 16 字）", state.profile.playerName || "新駕駛");
+  if (next === null) {
+    return;
+  }
+  state.profile.playerName = sanitizePlayerName(next);
+  persistProfile();
+  showPilotArchiveOverlay();
+}
+
+function clearLeaderboardData() {
+  if (!window.confirm("確定清空本機排行榜？")) {
+    return;
+  }
+  state.leaderboard = [];
+  saveLeaderboard([]);
+  showPilotArchiveOverlay();
+}
+
+function clearRunHistoryData() {
+  if (!window.confirm("確定清空本機戰績紀錄？")) {
+    return;
+  }
+  state.runHistory = [];
+  saveRunHistory([]);
+  showPilotArchiveOverlay();
 }
 
 function loadNumber(key, fallback) {
